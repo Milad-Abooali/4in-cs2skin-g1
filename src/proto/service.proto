@@ -1,0 +1,22 @@
+syntax = "proto3";
+
+package proto;
+
+option go_package = "github.com/Milad-Abooali/dev-csiran-core/proto;proto";
+
+service DataService {
+  rpc Query (QueryRequest) returns (QueryResponse);
+}
+
+message QueryRequest {
+  string token = 1;
+  string query = 2;
+}
+
+import "google/protobuf/struct.proto";
+
+message QueryResponse {
+  string status = 1;
+  string error = 2;
+  google.protobuf.Struct data = 3;
+}

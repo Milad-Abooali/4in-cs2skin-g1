@@ -1,0 +1,34 @@
+# Docker / CI-related overrides
+.dockerignore
+Dockerfile
+docker-compose.override.yml
+
+# Ignore OS/system-specific files
+.DS_Store
+Thumbs.db
+
+# VCS (Git) folders
+.git
+.gitignore
+.gitattributes
+
+# IDE and editor config
+.vscode/
+.idea/
+*.code-workspace
+
+# ENV
+.env
+*.key
+*.pem
+*.crt
+
+# Project assets
+*.md
+*.drawio
+diagrams/
+research/
+assets/
+tests/
+
+# Dependency folders

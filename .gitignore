@@ -1,0 +1,24 @@
+# Self
+.git/
+
+# OS
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+*.tmp
+
+# IDE
+.vscode/
+.idea/
+*.code-workspace
+
+# Env
+.env
+
+# Logs
+*.log
+**/logs/
+*.pid
+
+# Others

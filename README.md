@@ -1,2 +1,20 @@
-# 4in-cs2skin-g1
-G1 - Case Battle
+# Title
+Description
+
+## Goals
+...
+
+## License
+...
+
+## Setup & Implement
+...
+
+## Dependencies
+...
+
+## Run & Usage Samples
+...
+
+## Documents & Links
+...
