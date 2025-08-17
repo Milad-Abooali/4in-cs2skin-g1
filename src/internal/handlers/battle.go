@@ -24,19 +24,27 @@ func NewBattle(data map[string]interface{}) (models.HandlerOK, models.HandlerErr
 	if !ok {
 		return resR, vErr
 	}
-
-	user, err := utils.VerifyJWT(userJWT)
+	resp, err := utils.VerifyJWT(userJWT)
 	if err != nil {
-		return models.HandlerOK{}, models.HandlerError{}
+		return resR, models.HandlerError{}
 	}
+	errCode, status, errType := utils.SafeExtractErrorStatus(resp)
+	if status != 1 {
+		errR.Type = errType
+		errR.Code = errCode
+		if resp["data"] != nil {
+			errR.Data = resp["data"]
+		}
+		return resR, errR
+	} else {
+		userData := resp["data"].(map[string]interface{})
+		profile := userData["profile"].(map[string]interface{})
 
-	userData := user["data"].(map[string]interface{})
-	profile := userData["profile"].(map[string]interface{})
+		id := int(profile["id"].(float64))
+		displayName := profile["display_name"].(string)
 
-	id := int(profile["id"].(float64))
-	displayName := profile["display_name"].(string)
-
-	log.Println(id, displayName)
+		log.Println(id, displayName)
+	}
 
 	// Make Battle
 	var userID int = 1

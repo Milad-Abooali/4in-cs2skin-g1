@@ -20,7 +20,6 @@ type UMRequest struct {
 }
 
 func VerifyJWT(userToken string) (map[string]interface{}, error) {
-	// خواندن ENV
 	env := os.Getenv("API_UM") // مثال: "https://um.main.cs2skin.com/web, 4fb1c6d6a5be06d65be004e2558bep2r, 1304025bdb3066dfb5c402c63ce1c02bbc6da41"
 	parts := make([]string, 3)
 	for i, p := range bytes.Split([]byte(env), []byte(",")) {
@@ -35,7 +34,6 @@ func VerifyJWT(userToken string) (map[string]interface{}, error) {
 	appToken := parts[1]
 	xKey := parts[2]
 
-	// آماده کردن بادی JSON
 	reqBody := UMRequest{
 		Type: "xGetJWT",
 		Data: UMRequestData{
@@ -49,7 +47,6 @@ func VerifyJWT(userToken string) (map[string]interface{}, error) {
 		return nil, fmt.Errorf("failed to marshal request: %w", err)
 	}
 
-	// ساخت HTTP Request
 	req, err := http.NewRequest("POST", baseURL, bytes.NewBuffer(jsonBody))
 	if err != nil {
 		return nil, fmt.Errorf("failed to create request: %w", err)
@@ -57,7 +54,6 @@ func VerifyJWT(userToken string) (map[string]interface{}, error) {
 	req.Header.Set("Authorization", "Bearer "+appToken)
 	req.Header.Set("Content-Type", "application/json")
 
-	// ارسال درخواست
 	client := &http.Client{}
 	resp, err := client.Do(req)
 	if err != nil {
@@ -65,13 +61,11 @@ func VerifyJWT(userToken string) (map[string]interface{}, error) {
 	}
 	defer resp.Body.Close()
 
-	// خواندن پاسخ
 	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read response: %w", err)
 	}
 
-	// Unmarshal جواب
 	var result map[string]interface{}
 	if err := json.Unmarshal(body, &result); err != nil {
 		return nil, fmt.Errorf("invalid JSON response: %w", err)
