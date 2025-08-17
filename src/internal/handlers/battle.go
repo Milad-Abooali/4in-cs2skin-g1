@@ -36,29 +36,36 @@ func NewBattle(data map[string]interface{}) (models.HandlerOK, models.HandlerErr
 			errR.Data = resp["data"]
 		}
 		return resR, errR
-	} else {
-		userData := resp["data"].(map[string]interface{})
-		profile := userData["profile"].(map[string]interface{})
-
-		id := int(profile["id"].(float64))
-		displayName := profile["display_name"].(string)
-
-		log.Println(id, displayName)
 	}
 
-	// Make Battle
-	var userID int = 1
+	userData := resp["data"].(map[string]interface{})
+	profile := userData["profile"].(map[string]interface{})
 
+	userID := int(profile["id"].(float64))
+	displayName := profile["display_name"].(string)
+
+	log.Println(userID, displayName)
+
+	// Make Battle
 	newBattle := &models.Battle{
 		PlayerType: fmt.Sprintf("%v", data["playerType"]),
 		Options:    castStringSlice(data["options"]),
 		Cases:      castCases(data["cases"]),
-		Players:    []int{userID},
-		CreatedBy:  userID,
+		Players:    []int{},
+		CreatedBy:  0,
 		Status:     "pending",
 		Slots:      make(map[string]models.Slot),
 		PFair:      make(map[string]interface{}),
 		CreatedAt:  time.Now(),
+	}
+
+	// Join Battle
+	newBattle.Players = append(newBattle.Players, userID)
+	newBattle.CreatedBy = userID
+	newBattle.Slots["1"] = models.Slot{
+		ID:          userID,
+		DisplayName: displayName,
+		Type:        "Player",
 	}
 
 	// Success
