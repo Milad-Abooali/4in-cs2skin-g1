@@ -24,61 +24,15 @@ func dispatchWeb(w http.ResponseWriter, fn func(map[string]interface{}) (models.
 
 // All POST routes mapped to handlers
 var postRoutes = map[string]func(map[string]interface{}) (models.HandlerOK, models.HandlerError){
-	// Auth
-	"register":    handlers.Register,
-	"socialLogin": handlers.SocialLogin,
-	"login":       handlers.Login,
-	"logout":      handlers.Logout,
-
-	// Token
-	"tokenRenew":    handlers.Renew,
-	"tokenExtend":   handlers.Extend,
-	"tokenValidate": handlers.Validate,
-
-	// Password
-	"passRecovery": handlers.PassRecovery,
-	"passReset":    handlers.PassReset,
-	"passChange":   handlers.PassChange,
-
-	// Profile / Avatar / Metadata
-	"getProfile":     handlers.GetProfile,
-	"updateProfile":  handlers.UpdateProfile,
-	"updateAvatar":   handlers.UpdateAvatar,
-	"clearAvatar":    handlers.ClearAvatar,
-	"getMetadata":    handlers.GetMetadata,
-	"updateMetadata": handlers.UpdateMetadata,
-
-	// User finance/history
-	"getBalance":      handlers.GetBalance,
-	"addRequest":      handlers.AddRequest,
-	"getRequests":     handlers.GetRequest,
-	"getTransactions": handlers.GetTransactions,
-	"getTrades":       handlers.GetTrades,
-	"getGameHistory":  handlers.GetGameHistory,
-
-	// Admin
-	"aGetUsers":        handlers.AGetUsers,
-	"aGetUser":         handlers.AGetUser,
-	"aLoginAsUser":     handlers.ALoginAsUser,
-	"aUpdateUser":      handlers.AUpdateUser,
-	"aSetPassword":     handlers.ASetPassword,
-	"aDeleteUser":      handlers.ADeleteUser,
-	"aGetRequests":     handlers.AGetRequests,
-	"aUpdateRequest":   handlers.AUpdateRequest,
-	"aAddTransaction":  handlers.AAddTransactions,
-	"aGetTransactions": handlers.AGetTransactions,
-
-	// External Layer
-	"xGetJWT":         handlers.XGetJWT,
-	"xGetUser":        handlers.XGetUser,
-	"xAddTransaction": handlers.XAddTransactions,
+	// Ping
+	"ping": handlers.Ping,
 }
 
 func HandleHTTP(w http.ResponseWriter, r *http.Request) {
 	// App token validation
 	token := r.Header.Get("Authorization")
 	if token != "Bearer "+os.Getenv("APP_TOKEN") {
-		handlers.SendWebError(w, "INVALID_APP_TOKEN", 10001)
+		handlers.SendWebError(w, "INVALID_APP_TOKEN", 1001)
 		return
 	}
 

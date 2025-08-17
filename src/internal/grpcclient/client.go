@@ -21,7 +21,7 @@ func Connect(address string) {
 	conn, err := grpc.DialContext(
 		ctx,
 		address,
-		grpc.WithInsecure(), // فقط برای تست، بدون TLS
+		grpc.WithInsecure(),
 		grpc.WithBlock(),
 	)
 	if err != nil {
@@ -37,7 +37,7 @@ func SendQuery(query string) (*pb.QueryResponse, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
-	token := os.Getenv("CORE_ACCESS_TOKEN")
+	token := os.Getenv("CORE_GRPC_TOKEN")
 
 	return client.Query(ctx, &pb.QueryRequest{
 		Token: token,

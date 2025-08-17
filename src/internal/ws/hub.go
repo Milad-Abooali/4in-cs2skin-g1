@@ -2,7 +2,6 @@ package ws
 
 import (
 	"encoding/json"
-	"github.com/Milad-Abooali/4in-cs2skin-g1/src/internal/handlers"
 	"sync"
 	"time"
 
@@ -186,9 +185,8 @@ func EmitServer(req map[string]interface{}, resType string, resData interface{})
 	// S Avatar
 	case "updateAvatar", "clearAvatar":
 		// Get User ID
-		userID, _ := handlers.JWT2UserID(req)
 		EmitToAnyEvent("sAvatar", map[string]any{
-			"user_id": int64(userID),
+			"user_id": 0,
 			"avatar":  resData,
 		})
 

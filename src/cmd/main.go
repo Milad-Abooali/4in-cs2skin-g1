@@ -14,7 +14,7 @@ import (
 )
 
 func init() {
-	log.Println("▶ [init] Auth Application v" + configs.Version)
+	log.Println("▶ [init] G1 v" + configs.Version)
 
 	// Load env
 	if err := godotenv.Load(); err != nil {
@@ -37,11 +37,14 @@ func main() {
 	}
 
 	log.Println("🌐 [main] Core gRPC: ", os.Getenv("CORE_GRPC_ADDRESS"))
+
 	grpcclient.Connect(os.Getenv("CORE_GRPC_ADDRESS"))
 	grpcclient.TestConnection()
 
-	// web
+	// WebSocket
 	http.HandleFunc("/ws", utils.WithCORS(ws.HandleWebSocket))
+
+	// HTTP
 	http.HandleFunc("/web", utils.WithCORS(withAPIVersion(web.HandleHTTP)))
 
 	port := os.Getenv("PORT")
