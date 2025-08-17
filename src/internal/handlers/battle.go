@@ -3,6 +3,7 @@ package handlers
 import (
 	"fmt"
 	"github.com/Milad-Abooali/4in-cs2skin-g1/src/internal/models"
+	"github.com/Milad-Abooali/4in-cs2skin-g1/src/internal/validate"
 	"github.com/Milad-Abooali/4in-cs2skin-g1/src/utils"
 	"log"
 	"time"
@@ -19,7 +20,12 @@ func NewBattle(data map[string]interface{}) (models.HandlerOK, models.HandlerErr
 	)
 
 	// Check Token
-	user, err := utils.VerifyJWT(data["token"].(string))
+	userJWT, vErr, ok := validate.RequireString(data, "token", false)
+	if !ok {
+		return resR, vErr
+	}
+
+	user, err := utils.VerifyJWT(userJWT)
 	if err != nil {
 		return models.HandlerOK{}, models.HandlerError{}
 	}
