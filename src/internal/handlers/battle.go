@@ -1,18 +1,42 @@
 package handlers
 
 import (
+	"encoding/json"
 	"fmt"
+	"github.com/Milad-Abooali/4in-cs2skin-g1/src/internal/grpcclient"
 	"github.com/Milad-Abooali/4in-cs2skin-g1/src/internal/models"
+	"github.com/Milad-Abooali/4in-cs2skin-g1/src/internal/provablyfair"
 	"github.com/Milad-Abooali/4in-cs2skin-g1/src/internal/validate"
 	"github.com/Milad-Abooali/4in-cs2skin-g1/src/utils"
 	"log"
 	"strconv"
+	"sync"
 	"time"
 )
 
 var (
-	BattleIndex = make(map[int]*models.Battle)
+	BattleIndex   = make(map[int64]*models.Battle)
+	battleIndexMu sync.RWMutex
 )
+
+func GetBattle(id int64) (*models.Battle, bool) {
+	battleIndexMu.RLock()
+	defer battleIndexMu.RUnlock()
+	b, ok := BattleIndex[id]
+	return b, ok
+}
+
+func SetBattle(id int64, b *models.Battle) {
+	battleIndexMu.Lock()
+	defer battleIndexMu.Unlock()
+	BattleIndex[id] = b
+}
+
+func DeleteBattle(id int64) {
+	battleIndexMu.Lock()
+	defer battleIndexMu.Unlock()
+	delete(BattleIndex, id)
+}
 
 func NewBattle(data map[string]interface{}) (models.HandlerOK, models.HandlerError) {
 	var (
@@ -54,7 +78,7 @@ func NewBattle(data map[string]interface{}) (models.HandlerOK, models.HandlerErr
 		Cases:      castCases(data["cases"]),
 		Players:    []int{},
 		CreatedBy:  0,
-		Status:     "pending",
+		Status:     "initialized",
 		Slots:      make(map[string]models.Slot),
 		PFair:      make(map[string]interface{}),
 		CreatedAt:  time.Now(),
@@ -71,17 +95,21 @@ func NewBattle(data map[string]interface{}) (models.HandlerOK, models.HandlerErr
 						count := int(countFloat)
 						for i := 0; i < count; i++ {
 							// Steps - on Case
-							log.Printf("Processing case %s, iteration %d\n", caseNumber, i+1)
 							caseInt, err := strconv.Atoi(caseNumber)
 							if err != nil {
-								log.Println("Invalid case number:", caseNumber)
-								continue
+								errR.Type = "INVALID_CASE_ID"
+								errR.Code = 1027
+								errR.Data = map[string]interface{}{
+									"fieldName": "cases",
+									"fieldType": "[{caseID:count}]",
+								}
+								return resR, errR
 							}
 
 							if caseData, ok := CasesImpacted[caseInt]; ok {
 
+								// Cal Price
 								var price float64
-
 								switch v := caseData["price"].(type) {
 								case float64:
 									price = v
@@ -96,11 +124,16 @@ func NewBattle(data map[string]interface{}) (models.HandlerOK, models.HandlerErr
 									log.Println("Unknown price type:", v)
 									continue
 								}
-
 								newBattle.Cost += price
 
 							} else {
-								log.Println("Case not found in CasesImpacted:", caseInt)
+								errR.Type = "INVALID_CASE_ID"
+								errR.Code = 1027
+								errR.Data = map[string]interface{}{
+									"fieldName": "cases",
+									"fieldType": "[{caseID:count}]",
+								}
+								return resR, errR
 							}
 
 						}
@@ -134,6 +167,20 @@ func NewBattle(data map[string]interface{}) (models.HandlerOK, models.HandlerErr
 		newBattle.Summery.Steps[key] = []int{}
 	}
 
+	// Provably Fair
+	clientSeed, vErr, ok := validate.RequireString(data, "clientSeed", false)
+	if !ok {
+		return resR, vErr
+	}
+	serverSeed, serverSeedHash := provablyfair.GenerateServerSeed()
+	newBattle.PFair = map[string]interface{}{
+		"serverSeed":     serverSeed,
+		"serverSeedHash": serverSeedHash,
+		"clientSeed": map[string]interface{}{
+			"s1": clientSeed,
+		},
+	}
+
 	// Fit Slots
 	var slots int
 	switch data["playerType"] {
@@ -165,15 +212,64 @@ func NewBattle(data map[string]interface{}) (models.HandlerOK, models.HandlerErr
 	// Join Battle
 	newBattle.Players = append(newBattle.Players, userID)
 	newBattle.CreatedBy = userID
-	newBattle.Slots["1"] = models.Slot{
+	newBattle.Slots["s1"] = models.Slot{
 		ID:          userID,
 		DisplayName: displayName,
+		ClientSeed:  clientSeed,
 		Type:        "Player",
 	}
 
+	// Save to DB
+	battleJSON, err := json.Marshal(newBattle)
+	if err != nil {
+		log.Println("failed to marshal battle:", err)
+		return resR, errR
+	}
+
+	// Sanitize and build query
+	query := fmt.Sprintf(
+		`INSERT INTO g1_battles (server_seed,server_seed_hash, battle) 
+				VALUES ('%s', '%s', '%s')`,
+		serverSeed,
+		serverSeedHash,
+		string(battleJSON),
+	)
+
+	// gRPC Call Insert User
+	res, err := grpcclient.SendQuery(query)
+	if err != nil || res == nil || res.Status != "ok" {
+		errR.Type = "DB_DATA"
+		errR.Code = 1070
+		if res != nil {
+			errR.Data = res.Error
+		}
+		return resR, errR
+	}
+
+	// Extract inserted_id from nested struct
+	newBattle.Status = fmt.Sprintf(`Waiting for %d users`, rune(slots-1))
+
+	dataDB := res.Data.GetFields()
+	id := int(dataDB["inserted_id"].GetNumberValue())
+	if id < 1 {
+		errR.Type = "DB_DATA"
+		errR.Code = 1070
+		return resR, errR
+	}
+	newBattle.ID = id
+	var update, errV = UpdateBattle(newBattle)
+	if update != true {
+		return resR, errV
+	}
+
+	// Battle Index
+	log.Println("battle:", BattleIndex[5])
+
+	// Battle User Level
+
 	// Success
 	resR.Type = "newBattle"
-	resR.Data = newBattle
+	resR.Data = ToBattleResponse(BattleIndex[int64(id)])
 	return resR, errR
 }
 
@@ -212,4 +308,76 @@ func castCases(val interface{}) []map[string]int {
 		}
 	}
 	return out
+}
+
+func UpdateBattle(battle *models.Battle) (bool, models.HandlerError) {
+	var (
+		errR models.HandlerError
+		bID  int = battle.ID
+	)
+	battleJSON, err := json.Marshal(battle)
+	if err != nil {
+		errR.Type = "json.Marshal(battle)"
+		errR.Code = 1027
+		return false, errR
+	}
+	// Sanitize and build query
+	query := fmt.Sprintf(
+		`Update g1_battles SET battle = '%s' WHERE id = %d`,
+		string(battleJSON),
+		bID,
+	)
+
+	// gRPC Call
+	res, err := grpcclient.SendQuery(query)
+	if err != nil || res == nil || res.Status != "ok" {
+		errR.Type = "PROFILE_GRPC_ERROR"
+		errR.Code = 1033
+		if res != nil {
+			errR.Data = res.Error
+		}
+		return false, errR
+	}
+
+	// Extract gRPC struct
+	dataDB := res.Data.GetFields()
+
+	// DB result rows count
+	exist := dataDB["rows_affected"].GetNumberValue()
+	if exist == 0 {
+		errR.Type = "USER_NOT_FOUND"
+		errR.Code = 1035
+		return false, errR
+	}
+
+	// Add To Battle Index
+	SetBattle(int64(battle.ID), battle)
+
+	return true, errR
+}
+
+func ToBattleResponse(b *models.Battle) models.BattleResponse {
+	slots := make(map[string]models.SlotResp)
+	for k, v := range b.Slots {
+		slots[k] = models.SlotResp{
+			ID:          v.ID,
+			DisplayName: v.DisplayName,
+			Type:        v.Type,
+		}
+	}
+	return models.BattleResponse{
+		ID:         b.ID,
+		PlayerType: b.PlayerType,
+		Options:    b.Options,
+		CaseCounts: b.CaseCounts,
+		Cost:       b.Cost,
+		Slots:      slots,
+		Status:     b.Status,
+		Summery: models.SummeryResponse{
+			Steps:   b.Summery.Steps,
+			Winners: b.Summery.Winners,
+			Prizes:  b.Summery.Prizes,
+		},
+		CreatedAt: b.CreatedAt,
+	}
 }

@@ -5,6 +5,7 @@ import "time"
 type Slot struct {
 	ID          int    `json:"id"`
 	DisplayName string `json:"display_name"`
+	ClientSeed  string `json:"client_seed"`
 	Type        string `json:"type"` // player یا bot
 }
 
@@ -37,4 +38,28 @@ type Battle struct {
 	CreatedBy  int                    `json:"createdBy"`
 	HE         HE                     `json:"he"`
 	PFair      map[string]interface{} `json:"pfair"`
+}
+
+type BattleResponse struct {
+	ID         int                 `json:"id"`
+	PlayerType string              `json:"playerType"`
+	Options    []string            `json:"options"`
+	CaseCounts int                 `json:"caseCounts"`
+	Cost       float64             `json:"cost"`
+	Slots      map[string]SlotResp `json:"slots"`
+	Status     string              `json:"status"`
+	Summery    SummeryResponse     `json:"summery"`
+	CreatedAt  time.Time           `json:"createdAt"`
+}
+
+type SlotResp struct {
+	ID          int    `json:"id"`
+	DisplayName string `json:"display_name"`
+	Type        string `json:"type"`
+}
+
+type SummeryResponse struct {
+	Steps   map[string][]int `json:"steps"`
+	Winners []string         `json:"winners,omitempty"`
+	Prizes  []float64        `json:"prizes,omitempty"`
 }
