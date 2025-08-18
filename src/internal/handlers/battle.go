@@ -74,6 +74,12 @@ func NewBattle(data map[string]interface{}) (models.HandlerOK, models.HandlerErr
 	userID := int(profile["id"].(float64))
 	displayName := profile["display_name"].(string)
 
+	balanceStr := fmt.Sprintf("%v", profile["balance"])
+	balance, err := strconv.ParseFloat(balanceStr, 64)
+	if err != nil {
+		balance = 0
+	}
+
 	// Make Battle
 	newBattle := &models.Battle{
 		PlayerType: fmt.Sprintf("%v", data["playerType"]),
@@ -159,6 +165,38 @@ func NewBattle(data map[string]interface{}) (models.HandlerOK, models.HandlerErr
 		errR.Data = map[string]interface{}{
 			"fieldName": "cases",
 			"fieldType": "[{caseID:count}]",
+		}
+		return resR, errR
+	}
+
+	// Check Balance
+	if balance < newBattle.Cost {
+		errR.Type = "INSUFFICIENT_BALANCE"
+		errR.Code = 7001
+		errR.Data = map[string]interface{}{
+			"cost":    newBattle.Cost,
+			"balance": balance,
+		}
+		return resR, errR
+	}
+	// Add Transaction
+	Transaction, err := utils.AddTransaction(
+		userID,
+		"game_loss",
+		"1",
+		newBattle.Cost,
+		"",
+		"Case Battle",
+	)
+	if err != nil {
+		return resR, models.HandlerError{}
+	}
+	errCode, status, errType = utils.SafeExtractErrorStatus(Transaction)
+	if status != 1 {
+		errR.Type = errType
+		errR.Code = errCode
+		if resp["data"] != nil {
+			errR.Data = resp["data"]
 		}
 		return resR, errR
 	}
@@ -476,6 +514,12 @@ func Join(data map[string]interface{}) (models.HandlerOK, models.HandlerError) {
 	userID := int(profile["id"].(float64))
 	displayName := profile["display_name"].(string)
 
+	balanceStr := fmt.Sprintf("%v", profile["balance"])
+	balance, err := strconv.ParseFloat(balanceStr, 64)
+	if err != nil {
+		balance = 0
+	}
+
 	// Get Battle
 	battleId, vErr, ok := validate.RequireInt(data, "battleId")
 	if !ok {
@@ -504,6 +548,38 @@ func Join(data map[string]interface{}) (models.HandlerOK, models.HandlerError) {
 	if battle.Slots[slotK].Type != "Empty" {
 		errR.Type = "SLOT_IS_NOT_EMPTY"
 		errR.Code = 1027
+		return resR, errR
+	}
+
+	// Check Balance
+	if balance < battle.Cost {
+		errR.Type = "INSUFFICIENT_BALANCE"
+		errR.Code = 7001
+		errR.Data = map[string]interface{}{
+			"cost":    battle.Cost,
+			"balance": balance,
+		}
+		return resR, errR
+	}
+	// Add Transaction
+	Transaction, err := utils.AddTransaction(
+		userID,
+		"game_loss",
+		"1",
+		battle.Cost,
+		"",
+		"Case Battle",
+	)
+	if err != nil {
+		return resR, models.HandlerError{}
+	}
+	errCode, status, errType = utils.SafeExtractErrorStatus(Transaction)
+	if status != 1 {
+		errR.Type = errType
+		errR.Code = errCode
+		if resp["data"] != nil {
+			errR.Data = resp["data"]
+		}
 		return resR, errR
 	}
 
