@@ -67,8 +67,24 @@ func NewBattle(data map[string]interface{}) (models.HandlerOK, models.HandlerErr
 			}
 		}
 	}
+	if newBattle.CaseCounts < 1 {
+		errR.Type = "INVALID_TYPE_OR_FORMAT"
+		errR.Code = 5003
+		errR.Data = map[string]interface{}{
+			"fieldName": "cases",
+			"fieldType": "[{caseID:count}]",
+		}
+		return resR, errR
+	}
 
 	// Cal Price
+
+	// Add Steps
+	newBattle.Summery.Steps = make(map[string][]int)
+	for i := 1; i <= newBattle.CaseCounts; i++ {
+		key := fmt.Sprintf("r%d", i)
+		newBattle.Summery.Steps[key] = []int{}
+	}
 
 	// Fit Slots
 	var slots int
@@ -92,7 +108,7 @@ func NewBattle(data map[string]interface{}) (models.HandlerOK, models.HandlerErr
 	}
 	newBattle.Slots = make(map[string]models.Slot)
 	for i := 1; i <= slots; i++ {
-		key := fmt.Sprintf("%d", i)
+		key := fmt.Sprintf("s%d", i)
 		newBattle.Slots[key] = models.Slot{
 			Type: "Empty",
 		}
