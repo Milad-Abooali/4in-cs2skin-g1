@@ -21,34 +21,46 @@ func GetCases(data map[string]interface{}) (models.HandlerOK, models.HandlerErro
 	)
 
 	if len(CasesImpacted) == 0 {
-		log.Println("Fill CasesImpacted...")
+		FillCaseImpact()
+	}
 
-		// Sanitize and build query
-		query := fmt.Sprintf(`SELECT id,name,color,price,distribution,rarity,weight FROM cases WHERE publish_status=1`)
-		// gRPC Call
-		res, err := grpcclient.SendQuery(query)
-		if err != nil || res == nil || res.Status != "ok" {
-			errR.Type = "GRPC_ERROR"
-			errR.Code = 1033
-			if res != nil {
-				errR.Data = res.Error
-			}
-			return resR, errR
-		}
-		// Extract gRPC struct
-		dataDB := res.Data.GetFields()
-		// DB result rows count
-		exist := dataDB["count"].GetNumberValue()
-		if exist == 0 {
-			errR.Type = "DB_DATA"
-			errR.Code = 1070
-			return resR, errR
-		}
-		// DB result rows get fields
-		DbCases = dataDB["rows"].GetListValue()
+	// Success
+	resR.Type = "getCases"
+	resR.Data = CasesImpacted
+	return resR, errR
+}
 
-		// Sanitize and build query
-		query = fmt.Sprintf(`SELECT 
+func FillCaseImpact() (map[int]grpcclient.CaseWithItems, models.HandlerError) {
+	log.Println("Fill CasesImpacted...")
+	var (
+		errR models.HandlerError
+	)
+	// Sanitize and build query
+	query := fmt.Sprintf(`SELECT id,name,color,price,distribution,rarity,weight FROM cases WHERE publish_status=1`)
+	// gRPC Call
+	res, err := grpcclient.SendQuery(query)
+	if err != nil || res == nil || res.Status != "ok" {
+		errR.Type = "GRPC_ERROR"
+		errR.Code = 1033
+		if res != nil {
+			errR.Data = res.Error
+		}
+		return CasesImpacted, errR
+	}
+	// Extract gRPC struct
+	dataDB := res.Data.GetFields()
+	// DB result rows count
+	exist := dataDB["count"].GetNumberValue()
+	if exist == 0 {
+		errR.Type = "DB_DATA"
+		errR.Code = 1070
+		return CasesImpacted, errR
+	}
+	// DB result rows get fields
+	DbCases = dataDB["rows"].GetListValue()
+
+	// Sanitize and build query
+	query = fmt.Sprintf(`SELECT 
     	ci.id,
     	ci.case_id,
    		ci.min_rand,
@@ -58,34 +70,30 @@ func GetCases(data map[string]interface{}) (models.HandlerOK, models.HandlerErro
    		ci.color,
    		ir.market_hash_name,
         "Emerlad" as item_cat FROM case_items ci LEFT JOIN item_repo ir ON ci.item_id = ir.id`)
-		// gRPC Call
-		res, err = grpcclient.SendQuery(query)
-		if err != nil || res == nil || res.Status != "ok" {
-			errR.Type = "GRPC_ERROR"
-			errR.Code = 1033
-			if res != nil {
-				errR.Data = res.Error
-			}
-			return resR, errR
+	// gRPC Call
+	res, err = grpcclient.SendQuery(query)
+	if err != nil || res == nil || res.Status != "ok" {
+		errR.Type = "GRPC_ERROR"
+		errR.Code = 1033
+		if res != nil {
+			errR.Data = res.Error
 		}
-		// Extract gRPC struct
-		dataDB = res.Data.GetFields()
-		// DB result rows count
-		exist = dataDB["count"].GetNumberValue()
-		if exist == 0 {
-			errR.Type = "DB_DATA"
-			errR.Code = 1070
-			return resR, errR
-		}
-		// DB result rows get fields
-		DbCaseItems = dataDB["rows"].GetListValue()
-
-		// Merge Data
-		CasesImpacted = grpcclient.MergeCasesAndItems(grpcclient.ListValueToStructs(DbCases), grpcclient.ListValueToStructs(DbCaseItems))
+		return CasesImpacted, errR
 	}
+	// Extract gRPC struct
+	dataDB = res.Data.GetFields()
+	// DB result rows count
+	exist = dataDB["count"].GetNumberValue()
+	if exist == 0 {
+		errR.Type = "DB_DATA"
+		errR.Code = 1070
+		return CasesImpacted, errR
+	}
+	// DB result rows get fields
+	DbCaseItems = dataDB["rows"].GetListValue()
 
-	// Success
-	resR.Type = "getCases"
-	resR.Data = CasesImpacted
-	return resR, errR
+	// Merge Data
+	CasesImpacted = grpcclient.MergeCasesAndItems(grpcclient.ListValueToStructs(DbCases), grpcclient.ListValueToStructs(DbCaseItems))
+
+	return CasesImpacted, errR
 }

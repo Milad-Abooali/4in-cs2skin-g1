@@ -5,6 +5,8 @@ import (
 	"github.com/Milad-Abooali/4in-cs2skin-g1/src/internal/models"
 	"github.com/Milad-Abooali/4in-cs2skin-g1/src/internal/validate"
 	"github.com/Milad-Abooali/4in-cs2skin-g1/src/utils"
+	"log"
+	"strconv"
 	"time"
 )
 
@@ -17,6 +19,10 @@ func NewBattle(data map[string]interface{}) (models.HandlerOK, models.HandlerErr
 		errR models.HandlerError
 		resR models.HandlerOK
 	)
+
+	if len(CasesImpacted) == 0 {
+		FillCaseImpact()
+	}
 
 	// Check Token
 	userJWT, vErr, ok := validate.RequireString(data, "token", false)
@@ -54,10 +60,35 @@ func NewBattle(data map[string]interface{}) (models.HandlerOK, models.HandlerErr
 		CreatedAt:  time.Now(),
 	}
 
-	// Count Cases
+	// Cases
 	if casesArr, ok := data["cases"].([]interface{}); ok {
 		for _, c := range casesArr {
 			if m, ok := c.(map[string]interface{}); ok {
+
+				// Price
+				for caseNumber, v := range m {
+					if countFloat, ok := v.(float64); ok { // JSON numbers -> float64
+						count := int(countFloat)
+						for i := 0; i < count; i++ {
+							// Steps - on Case
+							log.Printf("Processing case %s, iteration %d\n", caseNumber, i+1)
+							caseInt, err := strconv.Atoi(caseNumber)
+							if err != nil {
+								log.Println("Invalid case number:", caseNumber)
+								continue
+							}
+
+							if caseData, ok := CasesImpacted[caseInt]; ok {
+								log.Println(caseData)
+							} else {
+								log.Println("Case not found in CasesImpacted:", caseInt)
+							}
+
+						}
+					}
+				}
+
+				// Count
 				for _, v := range m {
 					if count, ok := v.(float64); ok { // JSON numbers -> float64
 						newBattle.CaseCounts += int(count)
@@ -76,8 +107,6 @@ func NewBattle(data map[string]interface{}) (models.HandlerOK, models.HandlerErr
 		}
 		return resR, errR
 	}
-
-	// Cal Price
 
 	// Add Steps
 	newBattle.Summery.Steps = make(map[string][]int)
