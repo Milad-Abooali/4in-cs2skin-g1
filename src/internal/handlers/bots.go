@@ -113,6 +113,7 @@ func AddBot(data map[string]interface{}) (models.HandlerOK, models.HandlerError)
 		Type:        "Bot",
 	}
 	battle.Bots = append(battle.Bots, botId)
+	AddClientSeed(battle.PFair, slotK, clientSeed)
 
 	// update battle
 	emptyCount := 0
@@ -138,6 +139,109 @@ func AddBot(data map[string]interface{}) (models.HandlerOK, models.HandlerError)
 	resR.Data = map[string]interface{}{
 		"emptySlots": emptyCount,
 		"bot":        bot,
+	}
+	return resR, errR
+}
+
+func ClearSlot(data map[string]interface{}) (models.HandlerOK, models.HandlerError) {
+	var (
+		errR models.HandlerError
+		resR models.HandlerOK
+	)
+
+	// Check Token
+	userJWT, vErr, ok := validate.RequireString(data, "token", false)
+	if !ok {
+		return resR, vErr
+	}
+	resp, err := utils.VerifyJWT(userJWT)
+	if err != nil {
+		return resR, models.HandlerError{}
+	}
+	errCode, status, errType := utils.SafeExtractErrorStatus(resp)
+	if status != 1 {
+		errR.Type = errType
+		errR.Code = errCode
+		if resp["data"] != nil {
+			errR.Data = resp["data"]
+		}
+		return resR, errR
+	}
+	userData := resp["data"].(map[string]interface{})
+	profile := userData["profile"].(map[string]interface{})
+	userID := int(profile["id"].(float64))
+
+	// Get Battle
+	battleId, vErr, ok := validate.RequireInt(data, "battleId")
+	if !ok {
+		return resR, vErr
+	}
+	battle, ok := GetBattle(battleId)
+	if !ok {
+		errR.Type = "NOT_FOUND"
+		errR.Code = 5003
+		return resR, errR
+	}
+
+	// Is Owner
+	if userID != battle.CreatedBy {
+		errR.Type = "INVALID_CREDENTIALS"
+		errR.Code = 208
+		return resR, errR
+	}
+
+	// Check Slot
+	slotId, vErr, ok := validate.RequireInt(data, "slotId")
+	if !ok {
+		return resR, vErr
+	}
+	slotK := fmt.Sprintf("s%d", slotId)
+	if battle.Slots[slotK].Type != "Bot" {
+		errR.Type = "SLOT_IS_NOT_BOT"
+		errR.Code = 1027
+		return resR, errR
+	}
+
+	// Remove bot
+	botIDToRemove := battle.Slots[slotK].ID
+	battle.Slots[slotK] = models.Slot{
+		ID:          0,
+		DisplayName: "",
+		ClientSeed:  "",
+		Type:        "Empty",
+	}
+	newBots := make([]int, 0, len(battle.Bots))
+	for _, id := range battle.Bots {
+		if id != botIDToRemove {
+			newBots = append(newBots, id)
+		}
+	}
+	battle.Bots = newBots
+	RemoveClientSeed(battle.PFair, slotK)
+
+	// update battle
+	emptyCount := 0
+	for _, slot := range battle.Slots {
+		if slot.Type == "Empty" {
+			emptyCount++
+		}
+	}
+	if emptyCount == 0 {
+		// Force To Rol
+		battle.Status = fmt.Sprintf(`Battle Is Starting ...`, emptyCount)
+		Rol(battle.ID)
+	} else {
+		battle.Status = fmt.Sprintf(`Waiting for %d users`, emptyCount)
+	}
+	var update, errV = UpdateBattle(battle)
+	if update != true {
+		return resR, errV
+	}
+
+	// Success
+	resR.Type = "addBot"
+	resR.Data = map[string]interface{}{
+		"emptySlots": emptyCount,
 	}
 	return resR, errR
 }
