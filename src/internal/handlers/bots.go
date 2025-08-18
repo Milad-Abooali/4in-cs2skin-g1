@@ -63,7 +63,6 @@ func AddBot(data map[string]interface{}) (models.HandlerOK, models.HandlerError)
 	userData := resp["data"].(map[string]interface{})
 	profile := userData["profile"].(map[string]interface{})
 	userID := int(profile["id"].(float64))
-	log.Println(userID)
 
 	// Get Battle
 	battleId, vErr, ok := validate.RequireInt(data, "battleId")
@@ -99,6 +98,10 @@ func AddBot(data map[string]interface{}) (models.HandlerOK, models.HandlerError)
 	// Select a bot
 	bot := randomBot(DbBots)
 	botId := int(bot.GetStructValue().Fields["id"].GetNumberValue())
+	if IsPlayerInBattle(battle.Bots, botId) {
+		bot = randomBot(DbBots)
+		botId = int(bot.GetStructValue().Fields["id"].GetNumberValue())
+	}
 	botName := bot.GetStructValue().Fields["name"].GetStringValue()
 	clientSeed := MD5UserID(botId)
 

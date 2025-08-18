@@ -442,3 +442,98 @@ func FillBattleIndex() (bool, models.HandlerError) {
 
 	return true, errR
 }
+
+func Join(data map[string]interface{}) (models.HandlerOK, models.HandlerError) {
+	var (
+		errR models.HandlerError
+		resR models.HandlerOK
+	)
+
+	if DbBots == nil || len(DbBots.Values) == 0 {
+		FillBots()
+	}
+
+	// Check Token
+	userJWT, vErr, ok := validate.RequireString(data, "token", false)
+	if !ok {
+		return resR, vErr
+	}
+	resp, err := utils.VerifyJWT(userJWT)
+	if err != nil {
+		return resR, models.HandlerError{}
+	}
+	errCode, status, errType := utils.SafeExtractErrorStatus(resp)
+	if status != 1 {
+		errR.Type = errType
+		errR.Code = errCode
+		if resp["data"] != nil {
+			errR.Data = resp["data"]
+		}
+		return resR, errR
+	}
+	userData := resp["data"].(map[string]interface{})
+	profile := userData["profile"].(map[string]interface{})
+	userID := int(profile["id"].(float64))
+	displayName := profile["display_name"].(string)
+
+	// Get Battle
+	battleId, vErr, ok := validate.RequireInt(data, "battleId")
+	if !ok {
+		return resR, vErr
+	}
+	battle, ok := GetBattle(battleId)
+	if !ok {
+		errR.Type = "NOT_FOUND"
+		errR.Code = 5003
+		return resR, errR
+	}
+
+	// Is Joined
+	if IsPlayerInBattle(battle.Players, userID) {
+		errR.Type = "ALREADY_JOINED"
+		errR.Code = 1017
+		return resR, errR
+	}
+
+	// Check Slot
+	slotId, vErr, ok := validate.RequireInt(data, "slotId")
+	if !ok {
+		return resR, vErr
+	}
+	slotK := fmt.Sprintf("s%d", slotId)
+	if battle.Slots[slotK].Type != "Empty" {
+		errR.Type = "SLOT_IS_NOT_EMPTY"
+		errR.Code = 1027
+		return resR, errR
+	}
+
+	// Join Battle
+	clientSeed := MD5UserID(userID)
+	battle.Slots[slotK] = models.Slot{
+		ID:          userID,
+		DisplayName: displayName,
+		ClientSeed:  clientSeed,
+		Type:        "Players",
+	}
+	battle.Players = append(battle.Players, userID)
+
+	// update battle
+	var update, errV = UpdateBattle(battle)
+	if update != true {
+		return resR, errV
+	}
+
+	// Success
+	resR.Type = "join"
+	resR.Data = map[string]interface{}{"clientSeed": clientSeed}
+	return resR, errR
+}
+
+func IsPlayerInBattle(players []int, userID int) bool {
+	for _, id := range players {
+		if id == userID {
+			return true
+		}
+	}
+	return false
+}
