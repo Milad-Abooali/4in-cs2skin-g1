@@ -8,6 +8,8 @@ import (
 	"github.com/Milad-Abooali/4in-cs2skin-g1/src/utils"
 	"google.golang.org/protobuf/types/known/structpb"
 	"log"
+	"math/rand"
+	"time"
 )
 
 var (
@@ -74,7 +76,13 @@ func AddBot(data map[string]interface{}) (models.HandlerOK, models.HandlerError)
 		errR.Code = 5003
 		return resR, errR
 	}
-	log.Println(battle.Slots)
+
+	// Is Owner
+	if userID != battle.CreatedBy {
+		errR.Type = "INVALID_CREDENTIALS"
+		errR.Code = 208
+		return resR, errR
+	}
 
 	// Check Slot
 	slotId, vErr, ok := validate.RequireInt(data, "slotId")
@@ -82,15 +90,36 @@ func AddBot(data map[string]interface{}) (models.HandlerOK, models.HandlerError)
 		return resR, vErr
 	}
 	slotK := fmt.Sprintf("s%d", slotId)
-	log.Println(battle.Slots[slotK])
+	if battle.Slots[slotK].Type != "Empty" {
+		errR.Type = "SLOT_IS_NOT_EMPTY"
+		errR.Code = 1027
+		return resR, errR
+	}
 
 	// Select a bot
+	bot := randomBot(DbBots)
+	botId := int(bot.GetStructValue().Fields["id"].GetNumberValue())
+	botName := bot.GetStructValue().Fields["name"].GetStringValue()
+	clientSeed := MD5UserID(botId)
+
+	// Join Battle
+	battle.Slots[slotK] = models.Slot{
+		ID:          botId,
+		DisplayName: botName,
+		ClientSeed:  clientSeed,
+		Type:        "Bot",
+	}
+	battle.Bots = append(battle.Bots, botId)
 
 	// update battle
+	var update, errV = UpdateBattle(battle)
+	if update != true {
+		return resR, errV
+	}
 
 	// Success
 	resR.Type = "addBot"
-	resR.Data = "test"
+	resR.Data = bot
 	return resR, errR
 }
 
@@ -124,4 +153,14 @@ func FillBots() (*structpb.ListValue, models.HandlerError) {
 	DbBots = dataDB["rows"].GetListValue()
 
 	return DbBots, errR
+}
+
+func randomBot(DbBots *structpb.ListValue) *structpb.Value {
+	if DbBots == nil || len(DbBots.Values) == 0 {
+		return nil
+	}
+
+	rand.Seed(time.Now().UnixNano())
+	idx := rand.Intn(len(DbBots.Values))
+	return DbBots.Values[idx]
 }

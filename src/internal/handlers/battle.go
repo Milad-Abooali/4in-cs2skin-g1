@@ -202,7 +202,6 @@ func NewBattle(data map[string]interface{}) (models.HandlerOK, models.HandlerErr
 	newBattle.Players = append(newBattle.Players, userID)
 	newBattle.CreatedBy = userID
 	clientSeed := MD5UserID(userID)
-
 	newBattle.Slots["s1"] = models.Slot{
 		ID:          userID,
 		DisplayName: displayName,
