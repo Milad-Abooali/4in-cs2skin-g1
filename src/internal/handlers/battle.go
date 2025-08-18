@@ -643,6 +643,7 @@ func AddClientSeed(battle map[string]interface{}, key string, value interface{})
 	}
 	cs[key] = value
 }
+
 func RemoveClientSeed(battle map[string]interface{}, key string) {
 	cs, ok := battle["clientSeed"].(map[string]interface{})
 	if !ok {
