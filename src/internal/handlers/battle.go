@@ -5,7 +5,6 @@ import (
 	"github.com/Milad-Abooali/4in-cs2skin-g1/src/internal/models"
 	"github.com/Milad-Abooali/4in-cs2skin-g1/src/internal/validate"
 	"github.com/Milad-Abooali/4in-cs2skin-g1/src/utils"
-	"log"
 	"time"
 )
 
@@ -37,14 +36,10 @@ func NewBattle(data map[string]interface{}) (models.HandlerOK, models.HandlerErr
 		}
 		return resR, errR
 	}
-
 	userData := resp["data"].(map[string]interface{})
 	profile := userData["profile"].(map[string]interface{})
-
 	userID := int(profile["id"].(float64))
 	displayName := profile["display_name"].(string)
-
-	log.Println(userID, displayName)
 
 	// Make Battle
 	newBattle := &models.Battle{
@@ -57,6 +52,50 @@ func NewBattle(data map[string]interface{}) (models.HandlerOK, models.HandlerErr
 		Slots:      make(map[string]models.Slot),
 		PFair:      make(map[string]interface{}),
 		CreatedAt:  time.Now(),
+	}
+
+	// Count Cases
+	if casesArr, ok := data["cases"].([]interface{}); ok {
+		for _, c := range casesArr {
+			if m, ok := c.(map[string]interface{}); ok {
+				for _, v := range m {
+					if count, ok := v.(float64); ok { // JSON numbers -> float64
+						newBattle.CaseCounts += int(count)
+						break // first
+					}
+				}
+			}
+		}
+	}
+
+	// Cal Price
+
+	// Fit Slots
+	var slots int
+	switch data["playerType"] {
+	case "1v1":
+		slots = 2
+	case "1v1v1":
+		slots = 3
+	case "1v1v1v1", "2v2":
+		slots = 4
+	case "1v6", "2v2v2", "3v3":
+		slots = 6
+	default:
+		errR.Type = "INVALID_TYPE_OR_FORMAT"
+		errR.Code = 5003
+		errR.Data = map[string]interface{}{
+			"fieldName": "playerType",
+			"fieldType": "eNum 0v0",
+		}
+		return resR, errR
+	}
+	newBattle.Slots = make(map[string]models.Slot)
+	for i := 1; i <= slots; i++ {
+		key := fmt.Sprintf("%d", i)
+		newBattle.Slots[key] = models.Slot{
+			Type: "Empty",
+		}
 	}
 
 	// Join Battle
