@@ -163,6 +163,34 @@ func NewBattle(data map[string]interface{}) (models.HandlerOK, models.HandlerErr
 		return resR, errR
 	}
 
+	// Fit Slots
+	var slots int
+	switch data["playerType"] {
+	case "1v1":
+		slots = 2
+	case "1v1v1":
+		slots = 3
+	case "1v1v1v1", "2v2":
+		slots = 4
+	case "1v6", "2v2v2", "3v3":
+		slots = 6
+	default:
+		errR.Type = "INVALID_TYPE_OR_FORMAT"
+		errR.Code = 5003
+		errR.Data = map[string]interface{}{
+			"fieldName": "playerType",
+			"fieldType": "eNum 0v0",
+		}
+		return resR, errR
+	}
+	newBattle.Slots = make(map[string]models.Slot)
+	for i := 1; i <= slots; i++ {
+		key := fmt.Sprintf("s%d", i)
+		newBattle.Slots[key] = models.Slot{
+			Type: "Empty",
+		}
+	}
+
 	// Add Steps
 	newBattle.Summery.Steps = make(map[string][]int)
 	for i := 1; i <= newBattle.CaseCounts; i++ {
@@ -190,34 +218,6 @@ func NewBattle(data map[string]interface{}) (models.HandlerOK, models.HandlerErr
 		"clientSeed": map[string]interface{}{
 			"s1": clientSeed,
 		},
-	}
-
-	// Fit Slots
-	var slots int
-	switch data["playerType"] {
-	case "1v1":
-		slots = 2
-	case "1v1v1":
-		slots = 3
-	case "1v1v1v1", "2v2":
-		slots = 4
-	case "1v6", "2v2v2", "3v3":
-		slots = 6
-	default:
-		errR.Type = "INVALID_TYPE_OR_FORMAT"
-		errR.Code = 5003
-		errR.Data = map[string]interface{}{
-			"fieldName": "playerType",
-			"fieldType": "eNum 0v0",
-		}
-		return resR, errR
-	}
-	newBattle.Slots = make(map[string]models.Slot)
-	for i := 1; i <= slots; i++ {
-		key := fmt.Sprintf("s%d", i)
-		newBattle.Slots[key] = models.Slot{
-			Type: "Empty",
-		}
 	}
 
 	// Save to DB

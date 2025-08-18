@@ -70,15 +70,23 @@ func AddBot(data map[string]interface{}) (models.HandlerOK, models.HandlerError)
 	}
 	battle, ok := GetBattle(battleId)
 	if !ok {
-		errR.Type = "INVALID_TYPE_OR_FORMAT"
+		errR.Type = "NOT_FOUND"
 		errR.Code = 5003
-		errR.Data = map[string]interface{}{
-			"fieldName": "battleId",
-			"fieldType": "int64",
-		}
 		return resR, errR
 	}
-	log.Println(battle)
+	log.Println(battle.Slots)
+
+	// Check Slot
+	slotId, vErr, ok := validate.RequireInt(data, "slotId")
+	if !ok {
+		return resR, vErr
+	}
+	slotK := fmt.Sprintf("s%d", slotId)
+	log.Println(battle.Slots[slotK])
+
+	// Select a bot
+
+	// update battle
 
 	// Success
 	resR.Type = "addBot"
