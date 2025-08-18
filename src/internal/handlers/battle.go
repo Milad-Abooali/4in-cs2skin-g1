@@ -79,7 +79,26 @@ func NewBattle(data map[string]interface{}) (models.HandlerOK, models.HandlerErr
 							}
 
 							if caseData, ok := CasesImpacted[caseInt]; ok {
-								log.Println(caseData)
+
+								var price float64
+
+								switch v := caseData["price"].(type) {
+								case float64:
+									price = v
+								case string:
+									p, err := strconv.ParseFloat(v, 64)
+									if err != nil {
+										log.Println("Invalid price value:", v)
+										continue
+									}
+									price = p
+								default:
+									log.Println("Unknown price type:", v)
+									continue
+								}
+
+								newBattle.Cost += price
+
 							} else {
 								log.Println("Case not found in CasesImpacted:", caseInt)
 							}
