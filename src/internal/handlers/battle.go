@@ -398,7 +398,7 @@ func FillBattleIndex() (bool, models.HandlerError) {
 	log.Println("Fill BattleIndex..")
 
 	// Sanitize and build query
-	query := `SELECT battle FROM g1_battles WHERE is_live=1 limit 2`
+	query := `SELECT battle FROM g1_battles WHERE is_live=1`
 
 	// gRPC Call
 	res, err := grpcclient.SendQuery(query)
