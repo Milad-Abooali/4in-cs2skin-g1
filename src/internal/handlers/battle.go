@@ -635,37 +635,6 @@ func Rol(battleId int) {
 
 }
 
-type BattleIndexDTO struct {
-	ID     int64            `json:"id"`
-	Status string           `json:"status"`
-	Slots  []map[string]any `json:"slots"`
-	Prize  float64          `json:"prize"`
-}
-
-func BuildBattleIndex(battles map[int64]*models.Battle) []BattleIndexDTO {
-	var out []BattleIndexDTO
-	for _, b := range battles {
-		dto := BattleIndexDTO{
-			ID:     b.ID,
-			Status: b.Status,
-			Prize:  b.Prize,
-		}
-
-		// فیلتر کردن اسلات‌ها برای کلاینت
-		for _, s := range b.Slots {
-			slotData := map[string]any{
-				"id":   s.ID,
-				"user": s.UserID,
-			}
-			// می‌تونی شرط بذاری مثلا اسلات‌های خالی فقط user=0 باشن
-			dto.Slots = append(dto.Slots, slotData)
-		}
-
-		out = append(out, dto)
-	}
-	return out
-}
-
 func AddClientSeed(battle map[string]interface{}, key string, value interface{}) {
 	cs, ok := battle["clientSeed"].(map[string]interface{})
 	if !ok {
