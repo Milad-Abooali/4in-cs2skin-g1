@@ -17,27 +17,38 @@ var upgrader = websocket.Upgrader{
 }
 
 // Executes a handler and sends either success or error response back to client
-func dispatch(conn *websocket.Conn, fn func(map[string]interface{}) (models.HandlerOK, models.HandlerError), req map[string]interface{}) {
+func dispatch(conn *websocket.Conn, reqId int64, fn func(map[string]interface{}) (models.HandlerOK, models.HandlerError), req map[string]interface{}) {
 	res, err := fn(req)
 	if err.Code > 0 {
-		handlers.SendWSError(conn, err.Type, err.Code, err.Data)
+		handlers.SendWSError(conn, reqId, err.Type, err.Code, err.Data)
 		return
 	}
-	handlers.SendWSResponse(conn, res.Type, res.Data)
+	handlers.SendWSResponse(conn, reqId, res.Type, res.Data)
 	EmitServer(req, res.Type, res.Data)
 }
 
 // All WS routes mapped to handlers
-var wsRoutes = map[string]func(*websocket.Conn, map[string]interface{}){
+var wsRoutes = map[string]func(*websocket.Conn, map[string]interface{}, int64){
 	// Ping
-	"ping": func(c *websocket.Conn, d map[string]interface{}) { dispatch(c, handlers.Ping, d) },
+	"ping": func(c *websocket.Conn, d map[string]interface{}, reqId int64) {
+		dispatch(c, reqId, handlers.Ping, d)
+	},
 
 	// Store
-	"getBots":  func(c *websocket.Conn, d map[string]interface{}) { dispatch(c, handlers.GetBots, d) },
-	"getCases": func(c *websocket.Conn, d map[string]interface{}) { dispatch(c, handlers.GetCases, d) },
+	"getBots": func(c *websocket.Conn, d map[string]interface{}, reqId int64) {
+		dispatch(c, reqId, handlers.GetBots, d)
+	},
+	"getCases": func(c *websocket.Conn, d map[string]interface{}, reqId int64) {
+		dispatch(c, reqId, handlers.GetCases, d)
+	},
 
 	// User Actions
-	"newBattle": func(c *websocket.Conn, d map[string]interface{}) { dispatch(c, handlers.NewBattle, d) },
+	"newBattle": func(c *websocket.Conn, d map[string]interface{}, reqId int64) {
+		dispatch(c, reqId, handlers.NewBattle, d)
+	},
+	"addBot": func(c *websocket.Conn, d map[string]interface{}, reqId int64) {
+		dispatch(c, reqId, handlers.AddBot, d)
+	},
 }
 
 func HandleWebSocket(w http.ResponseWriter, r *http.Request) {
@@ -55,24 +66,26 @@ func HandleWebSocket(w http.ResponseWriter, r *http.Request) {
 
 	// App token check
 	if os.Getenv("DEBUG") != "1" {
-
 		_, token, err := conn.ReadMessage()
 		if err != nil {
 			log.Println("WebSocket Read Error:", err)
 			return
 		}
 		if string(token) != os.Getenv("APP_TOKEN") {
-			handlers.SendWSError(conn, "INVALID_APP_TOKEN", 1001, "")
+			handlers.SendWSError(conn, 0, "INVALID_APP_TOKEN", 1001, "")
 			return
 		}
 
 	}
 
 	// Handshake
-	handlers.SendWSResponse(conn, "handshake", map[string]interface{}{
+	handlers.SendWSResponse(conn, 1, "handshake", map[string]interface{}{
 		"apiVersion": configs.Version,
 		"serverTime": time.Now().UTC().Format(time.RFC3339),
 	})
+
+	// Fill BattleIndex From DB
+	handlers.FillBattleIndex()
 
 	// Main loop
 	var msg models.Request
@@ -83,12 +96,12 @@ func HandleWebSocket(w http.ResponseWriter, r *http.Request) {
 			break
 		}
 		if err := json.Unmarshal(data, &msg); err != nil {
-			handlers.SendWSError(conn, "INVALID_JSON_BODY", 1002, "")
+			handlers.SendWSError(conn, 0, "INVALID_JSON_BODY", 1002, "")
 			continue
 		}
 		reqData, ok := msg.Data.(map[string]interface{})
 		if !ok {
-			handlers.SendWSError(conn, "INVALID_DATA_FIELD_TYPE", 1003, "")
+			handlers.SendWSError(conn, 0, "INVALID_DATA_FIELD_TYPE", 1003, "")
 			continue
 		}
 		if configs.Debug {
@@ -97,7 +110,7 @@ func HandleWebSocket(w http.ResponseWriter, r *http.Request) {
 
 		// Special case: bind
 		if msg.Type == "bind" {
-			handlers.SendWSResponse(conn, "bind.ok", map[string]any{
+			handlers.SendWSResponse(conn, 1, "bind.ok", map[string]any{
 				"at": time.Now().UTC().Format(time.RFC3339),
 			})
 			continue
@@ -105,11 +118,11 @@ func HandleWebSocket(w http.ResponseWriter, r *http.Request) {
 
 		// Dispatch via map
 		if fn, found := wsRoutes[msg.Type]; found {
-			fn(conn, reqData)
+			fn(conn, reqData, msg.ReqID)
 			continue
 		}
 
 		// Unknown route
-		handlers.SendWSError(conn, "UNKNOWN_ROUTE", 1010, map[string]any{"type": msg.Type})
+		handlers.SendWSError(conn, 0, "UNKNOWN_ROUTE", 1010, map[string]any{"type": msg.Type})
 	}
 }

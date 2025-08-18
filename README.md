@@ -4,3 +4,16 @@ item := provablyfair.PickItem(caseData, provablyfair.ServerSeed, provablyfair.Cl
 if item != nil {
 log.Println(i, "Selected item:", item["market_hash_name"], "Price:", item["price"])
 }
+
+
+
+
+
+
+
+
+
+	clientSeed, vErr, ok := validate.RequireString(data, "clientSeed", false)
+	if !ok {
+		return resR, vErr
+	}

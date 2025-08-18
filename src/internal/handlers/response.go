@@ -11,8 +11,9 @@ import (
 	"strconv"
 )
 
-func SendWSResponse(conn *websocket.Conn, resType string, data interface{}) {
+func SendWSResponse(conn *websocket.Conn, reqId int64, resType string, data interface{}) {
 	resp := models.ReqRes{
+		ReqID:  reqId,
 		Type:   resType,
 		Status: 1,
 		Data:   data,
@@ -22,13 +23,14 @@ func SendWSResponse(conn *websocket.Conn, resType string, data interface{}) {
 		return
 	}
 }
-func SendWSError(conn *websocket.Conn, resType string, eCode int, eExtra ...any) {
+func SendWSError(conn *websocket.Conn, reqId int64, resType string, eCode int, eExtra ...any) {
 	if len(eExtra) > 0 {
 		if configs.Debug == true {
 			log.Println("Error |", eExtra[0])
 		}
 	}
 	resp := models.ReqRes{
+		ReqID:  reqId,
 		Type:   resType,
 		Status: 0,
 		Error:  eCode,

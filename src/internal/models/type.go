@@ -7,12 +7,14 @@ type Payload struct {
 }
 type ReqRes struct {
 	Type   string      `json:"type"`
+	ReqID  int64       `json:"reqId,omitempty"`
 	Status int         `json:"status"`          // 1 = success, 0 = error
 	Error  int         `json:"error,omitempty"` // present only on error
 	Data   interface{} `json:"data,omitempty"`  // present only on success
 }
 type Request struct {
 	Type  string      `json:"type"`
+	ReqID int64       `json:"reqId,omitempty"`
 	Token string      `json:"token,omitempty"` // For Admin Side
 	Data  interface{} `json:"data,omitempty"`  // present only on success
 }

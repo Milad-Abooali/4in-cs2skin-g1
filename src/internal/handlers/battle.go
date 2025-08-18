@@ -1,6 +1,8 @@
 package handlers
 
 import (
+	"crypto/md5"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"github.com/Milad-Abooali/4in-cs2skin-g1/src/internal/grpcclient"
@@ -8,6 +10,7 @@ import (
 	"github.com/Milad-Abooali/4in-cs2skin-g1/src/internal/provablyfair"
 	"github.com/Milad-Abooali/4in-cs2skin-g1/src/internal/validate"
 	"github.com/Milad-Abooali/4in-cs2skin-g1/src/utils"
+	"google.golang.org/protobuf/types/known/structpb"
 	"log"
 	"strconv"
 	"sync"
@@ -167,11 +170,19 @@ func NewBattle(data map[string]interface{}) (models.HandlerOK, models.HandlerErr
 		newBattle.Summery.Steps[key] = []int{}
 	}
 
-	// Provably Fair
-	clientSeed, vErr, ok := validate.RequireString(data, "clientSeed", false)
-	if !ok {
-		return resR, vErr
+	// Join Battle
+	newBattle.Players = append(newBattle.Players, userID)
+	newBattle.CreatedBy = userID
+	clientSeed := MD5UserID(userID)
+
+	newBattle.Slots["s1"] = models.Slot{
+		ID:          userID,
+		DisplayName: displayName,
+		ClientSeed:  clientSeed,
+		Type:        "Player",
 	}
+
+	// Provably Fair
 	serverSeed, serverSeedHash := provablyfair.GenerateServerSeed()
 	newBattle.PFair = map[string]interface{}{
 		"serverSeed":     serverSeed,
@@ -207,16 +218,6 @@ func NewBattle(data map[string]interface{}) (models.HandlerOK, models.HandlerErr
 		newBattle.Slots[key] = models.Slot{
 			Type: "Empty",
 		}
-	}
-
-	// Join Battle
-	newBattle.Players = append(newBattle.Players, userID)
-	newBattle.CreatedBy = userID
-	newBattle.Slots["s1"] = models.Slot{
-		ID:          userID,
-		DisplayName: displayName,
-		ClientSeed:  clientSeed,
-		Type:        "Player",
 	}
 
 	// Save to DB
@@ -380,4 +381,65 @@ func ToBattleResponse(b *models.Battle) models.BattleResponse {
 		},
 		CreatedAt: b.CreatedAt,
 	}
+}
+
+func MD5UserID(userID int) string {
+	data := []byte(fmt.Sprintf("%d", userID))
+	hash := md5.Sum(data)
+	return hex.EncodeToString(hash[:])
+}
+
+func FillBattleIndex() (bool, models.HandlerError) {
+	var (
+		errR      models.HandlerError
+		dbBattles *structpb.ListValue
+	)
+
+	log.Println("Fill BattleIndex..")
+
+	// Sanitize and build query
+	query := `SELECT battle FROM g1_battles WHERE is_live=1 limit 2`
+
+	// gRPC Call
+	res, err := grpcclient.SendQuery(query)
+	if err != nil || res == nil || res.Status != "ok" {
+		errR.Type = "PROFILE_GRPC_ERROR"
+		errR.Code = 1033
+		if res != nil {
+			errR.Data = res.Error
+		}
+		return false, errR
+	}
+	// Extract gRPC struct
+	dataDB := res.Data.GetFields()
+	// DB result rows count
+	exist := dataDB["count"].GetNumberValue()
+	if exist == 0 {
+		errR.Type = "DB_DATA"
+		errR.Code = 1070
+		return false, errR
+	}
+	// DB result rows get fields
+	dbBattles = dataDB["rows"].GetListValue()
+
+	for idx, row := range dbBattles.Values {
+		structRow := row.GetStructValue()
+		battleJSON := structRow.Fields["battle"].GetStringValue() // JSON string
+
+		var b models.Battle
+		err := json.Unmarshal([]byte(battleJSON), &b)
+		if err != nil {
+			log.Println("Failed to unmarshal battle:", err)
+			continue
+		}
+
+		key := int64(b.ID)
+		if key == 0 {
+			key = int64(idx + 1)
+		}
+
+		BattleIndex[key] = &b
+	}
+
+	return true, errR
 }

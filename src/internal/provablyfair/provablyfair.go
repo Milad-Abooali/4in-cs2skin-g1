@@ -1,4 +1,3 @@
-// provablyfair/provablyfair.go
 package provablyfair
 
 import (
