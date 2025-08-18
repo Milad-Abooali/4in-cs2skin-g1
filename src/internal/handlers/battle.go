@@ -87,7 +87,7 @@ func NewBattle(data map[string]interface{}) (models.HandlerOK, models.HandlerErr
 	newBattle := &models.Battle{
 		PlayerType: fmt.Sprintf("%v", data["playerType"]),
 		Options:    castStringSlice(data["options"]),
-		Cases:      castCases(data["cases"]),
+		Cases:      expandCases(castCases(data["cases"])),
 		Players:    []int{},
 		CreatedBy:  0,
 		Status:     "initialized",
@@ -231,13 +231,6 @@ func NewBattle(data map[string]interface{}) (models.HandlerOK, models.HandlerErr
 		newBattle.Slots[key] = models.Slot{
 			Type: "Empty",
 		}
-	}
-
-	// Add Steps
-	newBattle.Summery.Steps = make(map[string][]int)
-	for i := 1; i <= newBattle.CaseCounts; i++ {
-		key := fmt.Sprintf("r%d", i)
-		newBattle.Summery.Steps[key] = []int{}
 	}
 
 	// Join Battle
@@ -415,12 +408,8 @@ func ToBattleResponse(b *models.Battle) models.BattleResponse {
 		Cost:       b.Cost,
 		Slots:      slots,
 		Status:     b.Status,
-		Summery: models.SummeryResponse{
-			Steps:   b.Summery.Steps,
-			Winners: b.Summery.Winners,
-			Prizes:  b.Summery.Prizes,
-		},
-		CreatedAt: b.CreatedAt,
+		Summery:    b.Summery,
+		CreatedAt:  b.CreatedAt,
 	}
 }
 
@@ -614,8 +603,8 @@ func Join(data map[string]interface{}) (models.HandlerOK, models.HandlerError) {
 		}
 	}
 	if emptyCount == 0 {
-		// Force To Rol
-		Rol(int64(battle.ID))
+		// Force To Roll
+		Roll(int64(battle.ID), 0)
 	} else {
 		battle.Status = fmt.Sprintf(`Waiting for %d users`, emptyCount)
 	}
@@ -690,13 +679,71 @@ func BuildBattleIndex(battles map[int64]*models.Battle) map[int64]models.BattleC
 	return out
 }
 
-func Rol(battleId int64) {
-	battle, ok := GetBattle(battleId)
+func Roll(battleID int64, roundKey int) {
+	battle, ok := GetBattle(battleID)
 	if !ok {
-		fmt.Println("Battle not found")
+		log.Println("Battle not found:", battleID)
 		return
 	}
-	battle.Status = fmt.Sprintf(`Battle Is Starting ...`)
+
+	battle.Status = "Battle is running ..."
 	battle.StatusCode = 1
-	// PFair Select Items
+
+	if battle.Summery.Steps == nil {
+		battle.Summery.Steps = make(map[int][]models.StepResult)
+	}
+	if battle.Summery.Prizes == nil {
+		battle.Summery.Prizes = make(map[string]float64)
+	}
+
+	for slot, _ := range battle.Slots {
+		clientSeed, ok := battle.PFair["clientSeed"].(map[string]interface{})[slot].(string)
+		if !ok {
+			log.Println("No clientSeed for slot:", slot)
+			continue
+		}
+
+		caseID := battle.Cases[roundKey]
+		caseData := CasesImpacted[caseID]
+		item := provablyfair.PickItem(
+			caseData,
+			battle.PFair["serverSeed"].(string),
+			clientSeed,
+			len(battle.Summery.Steps[roundKey])+1, // nonce: round
+		)
+
+		if item == nil {
+			log.Println("No item picked for slot:", slot)
+			continue
+		}
+
+		step := models.StepResult{
+			Slot:   slot,
+			ItemID: item["id"].(int),
+			Price:  item["price"].(float64),
+		}
+
+		battle.Summery.Steps[roundKey] = append(battle.Summery.Steps[roundKey], step)
+
+		battle.Summery.Prizes[slot] += step.Price
+
+		log.Printf("Round %s | Slot %s picked %v ($%.2f)\n", roundKey, slot, step.ItemID, step.Price)
+	}
+
+	AddLog(battle, "Roll", int64(roundKey))
+	UpdateBattle(battle)
+
+}
+
+func expandCases(input []map[string]int) []int {
+	var out []int
+	for _, m := range input {
+		for k, count := range m {
+			caseID, _ := strconv.Atoi(k)
+			for i := 0; i < count; i++ {
+				out = append(out, caseID)
+			}
+		}
+	}
+	return out
 }

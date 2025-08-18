@@ -9,10 +9,16 @@ type Slot struct {
 	Type        string `json:"type"` // player یا bot
 }
 
+type StepResult struct {
+	Slot   string  `json:"slot"`   // s1, s2, ...
+	ItemID int     `json:"itemId"` // ID
+	Price  float64 `json:"price"`
+}
+
 type Summery struct {
-	Steps   map[string][]int `json:"steps"` // r1, r2, ...
-	Winners []string         `json:"winners"`
-	Prizes  []float64        `json:"prizes"`
+	Steps   map[int][]StepResult `json:"steps"` // r1 → [StepResult, StepResult, ...]
+	Winners []string             `json:"winners"`
+	Prizes  map[string]float64   `json:"prizes"` // s1 → total prize
 }
 
 type HE struct {
@@ -26,10 +32,10 @@ type Battle struct {
 	ID         int                    `json:"id"`
 	PlayerType string                 `json:"playerType"`
 	Options    []string               `json:"options"`
-	Cases      []map[string]int       `json:"cases"` // {"7":2}, {"2":1}
+	Cases      []int                  `json:"cases"`
 	CaseCounts int                    `json:"caseCounts"`
 	Cost       float64                `json:"cost"`
-	Slots      map[string]Slot        `json:"slots"` // s1, s2, ...
+	Slots      map[string]Slot        `json:"slots"`
 	Players    []int                  `json:"players"`
 	Bots       []int                  `json:"bots"`
 	Status     string                 `json:"status"`
@@ -57,7 +63,7 @@ type BattleResponse struct {
 	Cost       float64             `json:"cost"`
 	Slots      map[string]SlotResp `json:"slots"`
 	Status     string              `json:"status"`
-	Summery    SummeryResponse     `json:"summery"`
+	Summery    Summery             `json:"summery"`
 	CreatedAt  time.Time           `json:"createdAt"`
 }
 
@@ -74,17 +80,17 @@ type SummeryResponse struct {
 }
 
 type BattleClient struct {
-	ID         int              `json:"id"`
-	PlayerType string           `json:"playerType"`
-	Options    []string         `json:"options"`
-	Cases      []map[string]int `json:"cases"`
-	CaseCounts int              `json:"caseCounts"`
-	Cost       float64          `json:"cost"`
-	Slots      map[string]Slot  `json:"slots"`
-	Status     string           `json:"status"`
-	StatusCode int              `json:"statusCode"`
-	Summery    Summery          `json:"summery"`
-	CreatedAt  time.Time        `json:"createdAt"`
-	UpdatedAt  time.Time        `json:"updatedAt"`
-	ServerSeed string           `json:"serverSeed"`
+	ID         int             `json:"id"`
+	PlayerType string          `json:"playerType"`
+	Options    []string        `json:"options"`
+	Cases      []int           `json:"cases"`
+	CaseCounts int             `json:"caseCounts"`
+	Cost       float64         `json:"cost"`
+	Slots      map[string]Slot `json:"slots"`
+	Status     string          `json:"status"`
+	StatusCode int             `json:"statusCode"`
+	Summery    Summery         `json:"summery"`
+	CreatedAt  time.Time       `json:"createdAt"`
+	UpdatedAt  time.Time       `json:"updatedAt"`
+	ServerSeed string          `json:"serverSeed"`
 }
