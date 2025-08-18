@@ -85,7 +85,9 @@ func HandleWebSocket(w http.ResponseWriter, r *http.Request) {
 	})
 
 	// Fill BattleIndex From DB
-	handlers.FillBattleIndex()
+	if len(handlers.BattleIndex) == 0 {
+		handlers.FillBattleIndex()
+	}
 
 	// Main loop
 	var msg models.Request
