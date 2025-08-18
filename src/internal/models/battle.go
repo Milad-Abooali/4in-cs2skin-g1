@@ -33,11 +33,20 @@ type Battle struct {
 	Players    []int                  `json:"players"`
 	Bots       []int                  `json:"bots"`
 	Status     string                 `json:"status"`
+	StatusCode int                    `json:"statusCode"`
 	Summery    Summery                `json:"summery"`
 	CreatedAt  time.Time              `json:"createdAt"`
+	UpdatedAt  time.Time              `json:"updatedAt"`
 	CreatedBy  int                    `json:"createdBy"`
 	HE         HE                     `json:"he"`
-	PFair      map[string]interface{} `json:"pfair"`
+	PFair      map[string]interface{} `json:"pFair"`
+	Logs       []BattleLog            `json:"logs"`
+}
+
+type BattleLog struct {
+	Time   string `json:"time"`
+	Action string `json:"action"`
+	UserID int64  `json:"user_id"`
 }
 
 type BattleResponse struct {
@@ -62,4 +71,20 @@ type SummeryResponse struct {
 	Steps   map[string][]int `json:"steps"`
 	Winners []string         `json:"winners,omitempty"`
 	Prizes  []float64        `json:"prizes,omitempty"`
+}
+
+type BattleClient struct {
+	ID         int              `json:"id"`
+	PlayerType string           `json:"playerType"`
+	Options    []string         `json:"options"`
+	Cases      []map[string]int `json:"cases"`
+	CaseCounts int              `json:"caseCounts"`
+	Cost       float64          `json:"cost"`
+	Slots      map[string]Slot  `json:"slots"`
+	Status     string           `json:"status"`
+	StatusCode int              `json:"statusCode"`
+	Summery    Summery          `json:"summery"`
+	CreatedAt  time.Time        `json:"createdAt"`
+	UpdatedAt  time.Time        `json:"updatedAt"`
+	ServerSeed string           `json:"serverSeed"`
 }

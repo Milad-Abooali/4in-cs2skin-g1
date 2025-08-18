@@ -18,8 +18,9 @@ import (
 )
 
 var (
-	BattleIndex   = make(map[int64]*models.Battle)
-	battleIndexMu sync.RWMutex
+	BattleIndex    = make(map[int64]*models.Battle)
+	BattleIndexOut = make(map[int64]*models.BattleClient)
+	battleIndexMu  sync.RWMutex
 )
 
 func GetBattle(id int64) (*models.Battle, bool) {
@@ -36,6 +37,8 @@ func SetBattle(id int64, b *models.Battle) {
 }
 
 func DeleteBattle(id int64) {
+	AddLog(BattleIndex[id], "archive", int64(0))
+
 	battleIndexMu.Lock()
 	defer battleIndexMu.Unlock()
 	delete(BattleIndex, id)
@@ -91,6 +94,7 @@ func NewBattle(data map[string]interface{}) (models.HandlerOK, models.HandlerErr
 		Slots:      make(map[string]models.Slot),
 		PFair:      make(map[string]interface{}),
 		CreatedAt:  time.Now(),
+		UpdatedAt:  time.Now(),
 	}
 
 	// Cases
@@ -286,6 +290,7 @@ func NewBattle(data map[string]interface{}) (models.HandlerOK, models.HandlerErr
 
 	// Extract inserted_id from nested struct
 	newBattle.Status = fmt.Sprintf(`Waiting for %d users`, rune(slots-1))
+	newBattle.StatusCode = 0
 
 	dataDB := res.Data.GetFields()
 	id := int(dataDB["inserted_id"].GetNumberValue())
@@ -295,15 +300,13 @@ func NewBattle(data map[string]interface{}) (models.HandlerOK, models.HandlerErr
 		return resR, errR
 	}
 	newBattle.ID = id
+
+	AddLog(newBattle, "create", int64(userID))
+
 	var update, errV = UpdateBattle(newBattle)
 	if update != true {
 		return resR, errV
 	}
-
-	// Battle Index
-	log.Println("battle:", BattleIndex[5])
-
-	// Battle User Level
 
 	// Success
 	resR.Type = "newBattle"
@@ -353,6 +356,7 @@ func UpdateBattle(battle *models.Battle) (bool, models.HandlerError) {
 		errR models.HandlerError
 		bID  int = battle.ID
 	)
+	battle.UpdatedAt = time.Now()
 	battleJSON, err := json.Marshal(battle)
 	if err != nil {
 		errR.Type = "json.Marshal(battle)"
@@ -532,6 +536,12 @@ func Join(data map[string]interface{}) (models.HandlerOK, models.HandlerError) {
 		return resR, errR
 	}
 
+	if battle.StatusCode > 0 {
+		errR.Type = "GAME_IS_LOCKED"
+		errR.Code = 5007
+		return resR, errR
+	}
+
 	// Is Joined
 	if IsPlayerInBattle(battle.Players, userID) {
 		errR.Type = "ALREADY_JOINED"
@@ -595,6 +605,8 @@ func Join(data map[string]interface{}) (models.HandlerOK, models.HandlerError) {
 	AddClientSeed(battle.PFair, slotK, clientSeed)
 
 	// update battle
+	AddLog(battle, "join", int64(userID))
+
 	emptyCount := 0
 	for _, slot := range battle.Slots {
 		if slot.Type == "Empty" {
@@ -603,8 +615,7 @@ func Join(data map[string]interface{}) (models.HandlerOK, models.HandlerError) {
 	}
 	if emptyCount == 0 {
 		// Force To Rol
-		battle.Status = fmt.Sprintf(`Battle Is Starting ...`, emptyCount)
-		Rol(battle.ID)
+		Rol(int64(battle.ID))
 	} else {
 		battle.Status = fmt.Sprintf(`Waiting for %d users`, emptyCount)
 	}
@@ -631,10 +642,6 @@ func IsPlayerInBattle(players []int, userID int) bool {
 	return false
 }
 
-func Rol(battleId int) {
-
-}
-
 func AddClientSeed(battle map[string]interface{}, key string, value interface{}) {
 	cs, ok := battle["clientSeed"].(map[string]interface{})
 	if !ok {
@@ -644,10 +651,52 @@ func AddClientSeed(battle map[string]interface{}, key string, value interface{})
 	cs[key] = value
 }
 
+func AddLog(b *models.Battle, action string, userID int64) {
+	b.Logs = append(b.Logs, models.BattleLog{
+		Time:   time.Now().UTC().Format(time.RFC3339),
+		Action: action,
+		UserID: userID,
+	})
+}
+
 func RemoveClientSeed(battle map[string]interface{}, key string) {
 	cs, ok := battle["clientSeed"].(map[string]interface{})
 	if !ok {
 		return
 	}
 	delete(cs, key)
+}
+
+func BuildBattleIndex(battles map[int64]*models.Battle) map[int64]models.BattleClient {
+	out := make(map[int64]models.BattleClient)
+	for _, b := range battles {
+		dto := models.BattleClient{
+			ID:         b.ID,
+			PlayerType: b.PlayerType,
+			Options:    b.Options,
+			Cases:      b.Cases,
+			CaseCounts: b.CaseCounts,
+			Cost:       b.Cost,
+			Slots:      b.Slots,
+			Status:     b.Status,
+			StatusCode: b.StatusCode,
+			Summery:    b.Summery,
+			CreatedAt:  b.CreatedAt,
+			UpdatedAt:  b.UpdatedAt,
+			ServerSeed: b.PFair["serverSeedHash"].(string),
+		}
+		out[int64(b.ID)] = dto
+	}
+	return out
+}
+
+func Rol(battleId int64) {
+	battle, ok := GetBattle(battleId)
+	if !ok {
+		fmt.Println("Battle not found")
+		return
+	}
+	battle.Status = fmt.Sprintf(`Battle Is Starting ...`)
+	battle.StatusCode = 1
+	// PFair Select Items
 }

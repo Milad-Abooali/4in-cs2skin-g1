@@ -76,6 +76,12 @@ func AddBot(data map[string]interface{}) (models.HandlerOK, models.HandlerError)
 		return resR, errR
 	}
 
+	if battle.StatusCode > 0 {
+		errR.Type = "GAME_IS_LOCKED"
+		errR.Code = 5007
+		return resR, errR
+	}
+
 	// Is Owner
 	if userID != battle.CreatedBy {
 		errR.Type = "INVALID_CREDENTIALS"
@@ -102,6 +108,14 @@ func AddBot(data map[string]interface{}) (models.HandlerOK, models.HandlerError)
 		bot = randomBot(DbBots)
 		botId = int(bot.GetStructValue().Fields["id"].GetNumberValue())
 	}
+	if IsPlayerInBattle(battle.Bots, botId) {
+		bot = randomBot(DbBots)
+		botId = int(bot.GetStructValue().Fields["id"].GetNumberValue())
+	}
+	if IsPlayerInBattle(battle.Bots, botId) {
+		bot = randomBot(DbBots)
+		botId = int(bot.GetStructValue().Fields["id"].GetNumberValue())
+	}
 	botName := bot.GetStructValue().Fields["name"].GetStringValue()
 	clientSeed := MD5UserID(botId)
 
@@ -116,6 +130,8 @@ func AddBot(data map[string]interface{}) (models.HandlerOK, models.HandlerError)
 	AddClientSeed(battle.PFair, slotK, clientSeed)
 
 	// update battle
+	AddLog(battle, "addBot", int64(userID))
+
 	emptyCount := 0
 	for _, slot := range battle.Slots {
 		if slot.Type == "Empty" {
@@ -124,8 +140,7 @@ func AddBot(data map[string]interface{}) (models.HandlerOK, models.HandlerError)
 	}
 	if emptyCount == 0 {
 		// Force To Rol
-		battle.Status = fmt.Sprintf(`Battle Is Starting ...`, emptyCount)
-		Rol(battle.ID)
+		Rol(int64(battle.ID))
 	} else {
 		battle.Status = fmt.Sprintf(`Waiting for %d users`, emptyCount)
 	}
@@ -183,6 +198,12 @@ func ClearSlot(data map[string]interface{}) (models.HandlerOK, models.HandlerErr
 		return resR, errR
 	}
 
+	if battle.StatusCode > 0 {
+		errR.Type = "GAME_IS_LOCKED"
+		errR.Code = 5007
+		return resR, errR
+	}
+
 	// Is Owner
 	if userID != battle.CreatedBy {
 		errR.Type = "INVALID_CREDENTIALS"
@@ -220,6 +241,8 @@ func ClearSlot(data map[string]interface{}) (models.HandlerOK, models.HandlerErr
 	RemoveClientSeed(battle.PFair, slotK)
 
 	// update battle
+	AddLog(battle, "clearSlot", int64(userID))
+
 	emptyCount := 0
 	for _, slot := range battle.Slots {
 		if slot.Type == "Empty" {
@@ -228,8 +251,7 @@ func ClearSlot(data map[string]interface{}) (models.HandlerOK, models.HandlerErr
 	}
 	if emptyCount == 0 {
 		// Force To Rol
-		battle.Status = fmt.Sprintf(`Battle Is Starting ...`, emptyCount)
-		Rol(battle.ID)
+		Rol(int64(battle.ID))
 	} else {
 		battle.Status = fmt.Sprintf(`Waiting for %d users`, emptyCount)
 	}

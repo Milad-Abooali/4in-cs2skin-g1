@@ -182,5 +182,5 @@ func EmitToGuestsEvent(eventType string, data any) {
 
 func EmitServer(req map[string]interface{}, resType string, resData interface{}) {
 	log.Println("EmitToAnyEvent called:", resType)
-	EmitToAnyEvent("heartbeat", handlers.BattleIndex)
+	EmitToAnyEvent("heartbeat", handlers.BuildBattleIndex(handlers.BattleIndex))
 }
