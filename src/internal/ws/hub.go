@@ -183,20 +183,8 @@ func EmitServer(req map[string]interface{}, resType string, resData interface{})
 	switch resType {
 
 	// S Avatar
-	case "updateAvatar", "clearAvatar":
-		// Get User ID
-		EmitToAnyEvent("sAvatar", map[string]any{
-			"user_id": 0,
-			"avatar":  resData,
-		})
+	case "newBattle", "addBot", "join":
 
-	// S Balance
-	case "aAddTransaction", "xAddTransaction":
-		if uid, ok := req["userID"].(float64); ok {
-			EmitToUserEvent(int64(uid), "sBalance", map[string]any{
-				"balance": resData.(map[string]any)["newBalance"],
-			})
-		}
 	}
 
 }

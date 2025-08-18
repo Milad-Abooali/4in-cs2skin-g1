@@ -63,6 +63,7 @@ func FillCaseImpact() (map[int]grpcclient.CaseWithItems, models.HandlerError) {
 	query = fmt.Sprintf(`SELECT 
     	ci.id,
     	ci.case_id,
+    	ci.item_id,
    		ci.min_rand,
    		ci.max_rand,
    		ci.price,
