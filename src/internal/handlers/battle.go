@@ -518,6 +518,19 @@ func Join(data map[string]interface{}) (models.HandlerOK, models.HandlerError) {
 	battle.Players = append(battle.Players, userID)
 
 	// update battle
+	emptyCount := 0
+	for _, slot := range battle.Slots {
+		if slot.Type == "Empty" {
+			emptyCount++
+		}
+	}
+	if emptyCount == 0 {
+		// Force To Rol
+		battle.Status = fmt.Sprintf(`Battle Is Starting ...`, emptyCount)
+		Rol(battle.ID)
+	} else {
+		battle.Status = fmt.Sprintf(`Waiting for %d users`, emptyCount)
+	}
 	var update, errV = UpdateBattle(battle)
 	if update != true {
 		return resR, errV
@@ -525,7 +538,10 @@ func Join(data map[string]interface{}) (models.HandlerOK, models.HandlerError) {
 
 	// Success
 	resR.Type = "join"
-	resR.Data = map[string]interface{}{"clientSeed": clientSeed}
+	resR.Data = map[string]interface{}{
+		"emptySlots": emptyCount,
+		"clientSeed": clientSeed,
+	}
 	return resR, errR
 }
 
@@ -536,4 +552,8 @@ func IsPlayerInBattle(players []int, userID int) bool {
 		}
 	}
 	return false
+}
+
+func Rol(battleId int) {
+
 }

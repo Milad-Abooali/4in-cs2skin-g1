@@ -115,6 +115,19 @@ func AddBot(data map[string]interface{}) (models.HandlerOK, models.HandlerError)
 	battle.Bots = append(battle.Bots, botId)
 
 	// update battle
+	emptyCount := 0
+	for _, slot := range battle.Slots {
+		if slot.Type == "Empty" {
+			emptyCount++
+		}
+	}
+	if emptyCount == 0 {
+		// Force To Rol
+		battle.Status = fmt.Sprintf(`Battle Is Starting ...`, emptyCount)
+		Rol(battle.ID)
+	} else {
+		battle.Status = fmt.Sprintf(`Waiting for %d users`, emptyCount)
+	}
 	var update, errV = UpdateBattle(battle)
 	if update != true {
 		return resR, errV
@@ -122,7 +135,10 @@ func AddBot(data map[string]interface{}) (models.HandlerOK, models.HandlerError)
 
 	// Success
 	resR.Type = "addBot"
-	resR.Data = bot
+	resR.Data = map[string]interface{}{
+		"emptySlots": emptyCount,
+		"bot":        bot,
+	}
 	return resR, errR
 }
 
