@@ -5,6 +5,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"github.com/Milad-Abooali/4in-cs2skin-g1/src/configs"
 	"github.com/Milad-Abooali/4in-cs2skin-g1/src/internal/grpcclient"
 	"github.com/Milad-Abooali/4in-cs2skin-g1/src/internal/models"
 	"github.com/Milad-Abooali/4in-cs2skin-g1/src/internal/provablyfair"
@@ -758,6 +759,9 @@ func Roll(battleID int64, roundKey int) {
 		battle.Summery.Prizes = make(map[string]float64)
 	}
 
+	nonce := ((roundKey + 7) * 2) + 1
+	log.Println(nonce)
+
 	for slot, _ := range battle.Slots {
 		clientSeed, ok := battle.PFair["clientSeed"].(map[string]interface{})[slot].(string)
 		if !ok {
@@ -767,12 +771,15 @@ func Roll(battleID int64, roundKey int) {
 
 		caseID := battle.Cases[roundKey]
 		caseData := CasesImpacted[caseID]
+		if configs.Debug {
+			log.Println("Roll", slot, caseID, nonce)
+		}
 
 		item := provablyfair.PickItem(
 			caseData,
 			battle.PFair["serverSeed"].(string),
 			clientSeed,
-			len(battle.Summery.Steps[roundKey])+1, // nonce: round
+			nonce,
 		)
 
 		if item == nil {
@@ -780,10 +787,13 @@ func Roll(battleID int64, roundKey int) {
 			continue
 		}
 
+		priceStr, _ := item["price"].(string)
+		price, _ := strconv.ParseFloat(priceStr, 64)
+
 		step := models.StepResult{
 			Slot:   slot,
 			ItemID: item["id"].(int),
-			Price:  item["price"].(float64),
+			Price:  price,
 		}
 
 		battle.Summery.Steps[roundKey] = append(battle.Summery.Steps[roundKey], step)

@@ -24,10 +24,8 @@ func SendWSResponse(conn *websocket.Conn, reqId int64, resType string, data inte
 	}
 }
 func SendWSError(conn *websocket.Conn, reqId int64, resType string, eCode int, eExtra ...any) {
-	if len(eExtra) > 0 {
-		if configs.Debug == true {
-			log.Println("Error |", eExtra[0])
-		}
+	if configs.Debug {
+		log.Printf("Error %d | %s", eCode, resType)
 	}
 	resp := models.ReqRes{
 		ReqID:  reqId,
@@ -54,10 +52,8 @@ func SendWebResponse(w http.ResponseWriter, resType string, data interface{}) {
 	}
 }
 func SendWebError(w http.ResponseWriter, resType string, eCode int, eExtra ...any) {
-	if len(eExtra) > 0 {
-		if configs.Debug == true {
-			log.Println("Error |", eExtra[0])
-		}
+	if configs.Debug {
+		log.Printf("Error %d | %s", eCode, resType)
 	}
 	resp := models.ReqRes{
 		Type:   resType,
