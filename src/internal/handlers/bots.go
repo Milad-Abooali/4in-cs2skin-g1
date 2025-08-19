@@ -140,6 +140,7 @@ func AddBot(data map[string]interface{}) (models.HandlerOK, models.HandlerError)
 	}
 	if emptyCount == 0 {
 		// Force To Roll
+		battle.Status = "Battle is running ..."
 		Roll(int64(battle.ID), 0)
 	} else {
 		battle.Status = fmt.Sprintf(`Waiting for %d users`, emptyCount)
@@ -251,6 +252,7 @@ func ClearSlot(data map[string]interface{}) (models.HandlerOK, models.HandlerErr
 	}
 	if emptyCount == 0 {
 		// Force To Roll
+		battle.Status = "Battle is running ..."
 		Roll(int64(battle.ID), 0)
 	} else {
 		battle.Status = fmt.Sprintf(`Waiting for %d users`, emptyCount)

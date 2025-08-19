@@ -607,6 +607,7 @@ func Join(data map[string]interface{}) (models.HandlerOK, models.HandlerError) {
 	}
 	if emptyCount == 0 {
 		// Force To Roll
+		battle.Status = "Battle is running ..."
 		Roll(int64(battle.ID), 0)
 	} else {
 		battle.Status = fmt.Sprintf(`Waiting for %d users`, emptyCount)
@@ -723,6 +724,7 @@ func Test(data map[string]interface{}) (models.HandlerOK, models.HandlerError) {
 		return resR, errR
 	}
 
+	battle.Status = "Battle is running ..."
 	Roll(battleId, 0)
 
 	// Success
@@ -746,7 +748,7 @@ func Roll(battleID int64, roundKey int) {
 		return
 	}
 
-	battle.Status = "Battle is running ..."
+	battle.Status = fmt.Sprintf("Roll %d", roundKey)
 	battle.StatusCode = 1
 
 	if battle.Summery.Steps == nil {
