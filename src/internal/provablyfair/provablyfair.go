@@ -6,6 +6,7 @@ import (
 	"encoding/binary"
 	"encoding/hex"
 	"fmt"
+	"log"
 )
 
 var (
@@ -23,21 +24,18 @@ func ProvablyFairRand(serverSeed, clientSeed string, nonce, max int) int {
 }
 
 func PickItem(caseData map[string]interface{}, serverSeed, clientSeed string, nonce int) map[string]interface{} {
-	itemsRaw, ok := caseData["items"].(map[string]interface{})
-	if !ok {
-		return nil
-	}
 
 	// Generate provably fair random number 0..1,000,000
 	r := ProvablyFairRand(serverSeed, clientSeed, nonce, 1_000_001)
 
-	// Select matching item
-	for _, v := range itemsRaw {
-		item, ok := v.(map[string]interface{})
-		if !ok {
-			continue
-		}
+	itemsRaw, ok := caseData["items"].(map[int]map[string]interface{})
+	if !ok {
+		log.Println("PickItem > no items")
+		return nil
+	}
 
+	// Select matching item
+	for _, item := range itemsRaw {
 		minR, _ := item["min_rand"].(float64)
 		maxR, _ := item["max_rand"].(float64)
 

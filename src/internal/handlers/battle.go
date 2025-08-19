@@ -759,8 +759,7 @@ func Roll(battleID int64, roundKey int) {
 		battle.Summery.Prizes = make(map[string]float64)
 	}
 
-	nonce := ((roundKey + 7) * 2) + 1
-	log.Println(nonce)
+	nonce := ((roundKey + 7) * 2) + roundKey
 
 	for slot, _ := range battle.Slots {
 		clientSeed, ok := battle.PFair["clientSeed"].(map[string]interface{})[slot].(string)
@@ -768,12 +767,9 @@ func Roll(battleID int64, roundKey int) {
 			log.Println("No clientSeed for slot:", slot)
 			continue
 		}
-
+		nonce++
 		caseID := battle.Cases[roundKey]
 		caseData := CasesImpacted[caseID]
-		if configs.Debug {
-			log.Println("Roll", slot, caseID, nonce)
-		}
 
 		item := provablyfair.PickItem(
 			caseData,
@@ -781,6 +777,10 @@ func Roll(battleID int64, roundKey int) {
 			clientSeed,
 			nonce,
 		)
+
+		if configs.Debug {
+			log.Println("Roll", slot, caseID, nonce, item)
+		}
 
 		if item == nil {
 			log.Println("No item picked for slot:", slot)
@@ -792,7 +792,7 @@ func Roll(battleID int64, roundKey int) {
 
 		step := models.StepResult{
 			Slot:   slot,
-			ItemID: item["id"].(int),
+			ItemID: int(item["id"].(float64)),
 			Price:  price,
 		}
 
