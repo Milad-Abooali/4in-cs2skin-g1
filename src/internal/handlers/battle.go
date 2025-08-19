@@ -1,7 +1,9 @@
 package handlers
 
 import (
+	"crypto/hmac"
 	"crypto/md5"
+	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
@@ -13,7 +15,9 @@ import (
 	"github.com/Milad-Abooali/4in-cs2skin-g1/src/utils"
 	"google.golang.org/protobuf/types/known/structpb"
 	"log"
+	"os"
 	"strconv"
+	"strings"
 	"sync"
 	"time"
 )
@@ -84,10 +88,12 @@ func NewBattle(data map[string]interface{}) (models.HandlerOK, models.HandlerErr
 		balance = 0
 	}
 
+	options := castStringSlice(data["options"])
+
 	// Make Battle
 	newBattle := &models.Battle{
 		PlayerType: fmt.Sprintf("%v", data["playerType"]),
-		Options:    castStringSlice(data["options"]),
+		Options:    ToLowerArray(options),
 		Cases:      expandCases(castCases(data["cases"])),
 		Players:    []int{},
 		CreatedBy:  0,
@@ -295,6 +301,12 @@ func NewBattle(data map[string]interface{}) (models.HandlerOK, models.HandlerErr
 	}
 	newBattle.ID = id
 
+	// Options : Private
+	if inArray(newBattle.Options, "private") {
+		PrivateKey := GenerateShortBattleHash(strconv.Itoa(id))
+		newBattle.PrivateKey = PrivateKey
+	}
+
 	AddLog(newBattle, "create", int64(userID))
 
 	var update, errV = UpdateBattle(newBattle)
@@ -306,6 +318,23 @@ func NewBattle(data map[string]interface{}) (models.HandlerOK, models.HandlerErr
 	resR.Type = "newBattle"
 	resR.Data = ToBattleResponse(BattleIndex[int64(id)])
 	return resR, errR
+}
+
+func inArray[T comparable](arr []T, item T) bool {
+	for _, v := range arr {
+		if v == item {
+			return true
+		}
+	}
+	return false
+}
+
+func ToLowerArray(arr []string) []string {
+	lowerArr := make([]string, len(arr))
+	for i, v := range arr {
+		lowerArr[i] = strings.ToLower(v)
+	}
+	return lowerArr
 }
 
 func castStringSlice(val interface{}) []string {
@@ -392,7 +421,7 @@ func UpdateBattle(battle *models.Battle) (bool, models.HandlerError) {
 	return true, errR
 }
 
-func ToBattleResponse(b *models.Battle) models.BattleResponse {
+func ToBattleResponse(b *models.Battle) models.BattleCreated {
 	slots := make(map[string]models.SlotResp)
 	for k, v := range b.Slots {
 		slots[k] = models.SlotResp{
@@ -401,7 +430,7 @@ func ToBattleResponse(b *models.Battle) models.BattleResponse {
 			Type:        v.Type,
 		}
 	}
-	return models.BattleResponse{
+	return models.BattleCreated{
 		ID:         b.ID,
 		PlayerType: b.PlayerType,
 		Options:    b.Options,
@@ -411,6 +440,7 @@ func ToBattleResponse(b *models.Battle) models.BattleResponse {
 		Status:     b.Status,
 		Summery:    b.Summery,
 		CreatedAt:  b.CreatedAt,
+		PrivateKey: b.PrivateKey,
 	}
 }
 
@@ -527,6 +557,19 @@ func Join(data map[string]interface{}) (models.HandlerOK, models.HandlerError) {
 		errR.Type = "NOT_FOUND"
 		errR.Code = 5003
 		return resR, errR
+	}
+
+	// Options : Private
+	if inArray(battle.Options, "private") {
+		privateKey, vErr, ok := validate.RequireString(data, "privateKey", false)
+		if !ok {
+			return resR, vErr
+		}
+		if privateKey != battle.PrivateKey {
+			errR.Type = "GAME_IS_PRIVATE"
+			errR.Code = 5008
+			return resR, errR
+		}
 	}
 
 	if battle.StatusCode > 0 {
@@ -684,6 +727,161 @@ func BuildBattleIndex(battles map[int64]*models.Battle) map[int64]models.BattleC
 	return out
 }
 
+func expandCases(input []map[string]int) []int {
+	var out []int
+	for _, m := range input {
+		for k, count := range m {
+			caseID, _ := strconv.Atoi(k)
+			for i := 0; i < count; i++ {
+				out = append(out, caseID)
+			}
+		}
+	}
+	return out
+}
+
+func Roll(battleID int64, roundKey int) {
+
+	if DbBots == nil || len(DbBots.Values) == 0 {
+		FillBots()
+	}
+	if len(CasesImpacted) == 0 {
+		FillCaseImpact()
+	}
+
+	battle, ok := GetBattle(battleID)
+	if !ok {
+		log.Println("Battle not found:", battleID)
+		return
+	}
+
+	// Check if roll has already done
+	if steps, exists := battle.Summery.Steps[roundKey]; exists && len(steps) > 0 {
+		log.Printf("Error: Round %d has already been rolled", roundKey)
+	} else {
+
+		// Wait for animation
+		time.Sleep(3 * time.Second)
+
+		// Check max roll
+		if roundKey < 0 || roundKey >= len(battle.Cases) {
+			// Move to Option Level
+			log.Printf("Error: Round %d has already been rolled", roundKey)
+			if configs.Debug {
+				log.Printf("Battle %d steps(%d) are done.", battleID, roundKey)
+			}
+			// Go to check Options
+			optionActions(battleID)
+			return
+		}
+
+		battle.Status = fmt.Sprintf("Roll %d", roundKey+1)
+		battle.StatusCode = 1
+
+		if battle.Summery.Steps == nil {
+			battle.Summery.Steps = make(map[int][]models.StepResult)
+		}
+		if battle.Summery.Prizes == nil {
+			battle.Summery.Prizes = make(map[string]float64)
+		}
+
+		nonce := ((roundKey + 7) * 2) + roundKey
+		caseID := battle.Cases[roundKey]
+		caseData := CasesImpacted[caseID]
+
+		for slot, _ := range battle.Slots {
+			clientSeed, ok := battle.PFair["clientSeed"].(map[string]interface{})[slot].(string)
+			if !ok {
+				log.Println("No clientSeed for slot:", slot)
+				continue
+			}
+			nonce++
+
+			item := provablyfair.PickItem(
+				caseData,
+				battle.PFair["serverSeed"].(string),
+				clientSeed,
+				nonce,
+			)
+
+			if configs.Debug {
+				log.Println("Roll", slot, caseID, nonce, item["price"])
+			}
+
+			if item == nil {
+				log.Println("No item picked for slot:", slot)
+				continue
+			}
+
+			priceStr, _ := item["price"].(string)
+			price, _ := strconv.ParseFloat(priceStr, 64)
+
+			step := models.StepResult{
+				Slot:   slot,
+				ItemID: int(item["id"].(float64)),
+				Price:  price,
+			}
+
+			battle.Summery.Steps[roundKey] = append(battle.Summery.Steps[roundKey], step)
+			battle.Summery.Prizes[slot] += step.Price
+
+		}
+
+		AddLog(battle, fmt.Sprintf("Roll %d", roundKey+1), 0)
+		UpdateBattle(battle)
+	}
+
+	Roll(battleID, roundKey+1)
+}
+
+func GenerateShortBattleHash(battleID string) string {
+	secretKey := []byte(os.Getenv("HMAC_SECRET"))
+	timestamp := time.Now().Unix()
+	message := fmt.Sprintf("%s:%d", battleID, timestamp)
+	h := hmac.New(sha256.New, secretKey)
+	h.Write([]byte(message))
+	fullHash := h.Sum(nil)
+	shortHash := hex.EncodeToString(fullHash[:8])
+	return shortHash
+}
+
+func optionActions(battleID int64) {
+	battle, ok := GetBattle(battleID)
+	if !ok {
+		log.Println("Battle not found:", battleID)
+		return
+	}
+
+	if len(battle.Options) == 0 {
+		// No Options - Default
+
+	} else {
+		// Handel Options
+		executedOptions := make(map[string]bool)
+		for _, o := range battle.Options {
+			opt := strings.ToLower(o)
+			if executedOptions[opt] {
+				continue
+			}
+			log.Println(opt)
+
+			switch opt {
+			case "fast spin":
+			case "Private":
+			case "jackpot":
+
+			}
+			executedOptions[opt] = true
+		}
+	}
+
+	archive()
+	return
+}
+
+func archive() {
+
+}
 func Test(data map[string]interface{}) (models.HandlerOK, models.HandlerError) {
 	var (
 		errR models.HandlerError
@@ -726,97 +924,11 @@ func Test(data map[string]interface{}) (models.HandlerOK, models.HandlerError) {
 	}
 
 	battle.Status = "Battle is running ..."
-	Roll(battleId, 0)
+	round := int(data["r"].(float64))
+	Roll(battleId, round)
 
 	// Success
 	resR.Type = "test"
 	resR.Data = battle
 	return resR, errR
-}
-
-func Roll(battleID int64, roundKey int) {
-
-	if DbBots == nil || len(DbBots.Values) == 0 {
-		FillBots()
-	}
-	if len(CasesImpacted) == 0 {
-		FillCaseImpact()
-	}
-
-	battle, ok := GetBattle(battleID)
-	if !ok {
-		log.Println("Battle not found:", battleID)
-		return
-	}
-
-	battle.Status = fmt.Sprintf("Roll %d", roundKey+1)
-	battle.StatusCode = 1
-
-	if battle.Summery.Steps == nil {
-		battle.Summery.Steps = make(map[int][]models.StepResult)
-	}
-	if battle.Summery.Prizes == nil {
-		battle.Summery.Prizes = make(map[string]float64)
-	}
-
-	nonce := ((roundKey + 7) * 2) + roundKey
-
-	for slot, _ := range battle.Slots {
-		clientSeed, ok := battle.PFair["clientSeed"].(map[string]interface{})[slot].(string)
-		if !ok {
-			log.Println("No clientSeed for slot:", slot)
-			continue
-		}
-		nonce++
-		caseID := battle.Cases[roundKey]
-		caseData := CasesImpacted[caseID]
-
-		item := provablyfair.PickItem(
-			caseData,
-			battle.PFair["serverSeed"].(string),
-			clientSeed,
-			nonce,
-		)
-
-		if configs.Debug {
-			log.Println("Roll", slot, caseID, nonce, item)
-		}
-
-		if item == nil {
-			log.Println("No item picked for slot:", slot)
-			continue
-		}
-
-		priceStr, _ := item["price"].(string)
-		price, _ := strconv.ParseFloat(priceStr, 64)
-
-		step := models.StepResult{
-			Slot:   slot,
-			ItemID: int(item["id"].(float64)),
-			Price:  price,
-		}
-
-		battle.Summery.Steps[roundKey] = append(battle.Summery.Steps[roundKey], step)
-
-		battle.Summery.Prizes[slot] += step.Price
-
-		log.Printf("Round %s | Slot %s picked %v ($%.2f)\n", roundKey, slot, step.ItemID, step.Price)
-	}
-
-	AddLog(battle, "Roll", int64(roundKey))
-	UpdateBattle(battle)
-
-}
-
-func expandCases(input []map[string]int) []int {
-	var out []int
-	for _, m := range input {
-		for k, count := range m {
-			caseID, _ := strconv.Atoi(k)
-			for i := 0; i < count; i++ {
-				out = append(out, caseID)
-			}
-		}
-	}
-	return out
 }

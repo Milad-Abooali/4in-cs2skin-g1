@@ -1,6 +1,8 @@
 package models
 
-import "time"
+import (
+	"time"
+)
 
 type Slot struct {
 	ID          int    `json:"id"`
@@ -47,6 +49,7 @@ type Battle struct {
 	HE         HE                     `json:"he"`
 	PFair      map[string]interface{} `json:"pFair"`
 	Logs       []BattleLog            `json:"logs"`
+	PrivateKey string                 `json:"privateKey"`
 }
 
 type BattleLog struct {
@@ -55,7 +58,7 @@ type BattleLog struct {
 	UserID int64  `json:"user_id"`
 }
 
-type BattleResponse struct {
+type BattleCreated struct {
 	ID         int                 `json:"id"`
 	PlayerType string              `json:"playerType"`
 	Options    []string            `json:"options"`
@@ -65,6 +68,7 @@ type BattleResponse struct {
 	Status     string              `json:"status"`
 	Summery    Summery             `json:"summery"`
 	CreatedAt  time.Time           `json:"createdAt"`
+	PrivateKey string              `json:"privateKey"`
 }
 
 type SlotResp struct {
