@@ -33,6 +33,9 @@ var wsRoutes = map[string]func(*websocket.Conn, map[string]interface{}, int64){
 	"ping": func(c *websocket.Conn, d map[string]interface{}, reqId int64) {
 		dispatch(c, reqId, handlers.Ping, d)
 	},
+	"test": func(c *websocket.Conn, d map[string]interface{}, reqId int64) {
+		dispatch(c, reqId, handlers.Test, d)
+	},
 
 	// Store
 	"getBots": func(c *websocket.Conn, d map[string]interface{}, reqId int64) {

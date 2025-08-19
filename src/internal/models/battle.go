@@ -80,17 +80,17 @@ type SummeryResponse struct {
 }
 
 type BattleClient struct {
-	ID         int             `json:"id"`
-	PlayerType string          `json:"playerType"`
-	Options    []string        `json:"options"`
-	Cases      []int           `json:"cases"`
-	CaseCounts int             `json:"caseCounts"`
-	Cost       float64         `json:"cost"`
-	Slots      map[string]Slot `json:"slots"`
-	Status     string          `json:"status"`
-	StatusCode int             `json:"statusCode"`
-	Summery    Summery         `json:"summery"`
-	CreatedAt  time.Time       `json:"createdAt"`
-	UpdatedAt  time.Time       `json:"updatedAt"`
-	ServerSeed string          `json:"serverSeed"`
+	ID             int             `json:"id"`
+	PlayerType     string          `json:"playerType"`
+	Options        []string        `json:"options"`
+	Cases          []int           `json:"cases"`
+	CaseCounts     int             `json:"caseCounts"`
+	Cost           float64         `json:"cost"`
+	Slots          map[string]Slot `json:"slots"`
+	Status         string          `json:"status"`
+	StatusCode     int             `json:"statusCode"`
+	Summery        Summery         `json:"summery"`
+	CreatedAt      time.Time       `json:"createdAt"`
+	UpdatedAt      time.Time       `json:"updatedAt"`
+	ServerSeedHash string          `json:"serverSeedHash"`
 }

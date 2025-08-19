@@ -483,6 +483,9 @@ func Join(data map[string]interface{}) (models.HandlerOK, models.HandlerError) {
 	if DbBots == nil || len(DbBots.Values) == 0 {
 		FillBots()
 	}
+	if len(CasesImpacted) == 0 {
+		FillCaseImpact()
+	}
 
 	// Check Token
 	userJWT, vErr, ok := validate.RequireString(data, "token", false)
@@ -660,23 +663,72 @@ func BuildBattleIndex(battles map[int64]*models.Battle) map[int64]models.BattleC
 	out := make(map[int64]models.BattleClient)
 	for _, b := range battles {
 		dto := models.BattleClient{
-			ID:         b.ID,
-			PlayerType: b.PlayerType,
-			Options:    b.Options,
-			Cases:      b.Cases,
-			CaseCounts: b.CaseCounts,
-			Cost:       b.Cost,
-			Slots:      b.Slots,
-			Status:     b.Status,
-			StatusCode: b.StatusCode,
-			Summery:    b.Summery,
-			CreatedAt:  b.CreatedAt,
-			UpdatedAt:  b.UpdatedAt,
-			ServerSeed: b.PFair["serverSeedHash"].(string),
+			ID:             b.ID,
+			PlayerType:     b.PlayerType,
+			Options:        b.Options,
+			Cases:          b.Cases,
+			CaseCounts:     b.CaseCounts,
+			Cost:           b.Cost,
+			Slots:          b.Slots,
+			Status:         b.Status,
+			StatusCode:     b.StatusCode,
+			Summery:        b.Summery,
+			CreatedAt:      b.CreatedAt,
+			UpdatedAt:      b.UpdatedAt,
+			ServerSeedHash: b.PFair["serverSeedHash"].(string),
 		}
 		out[int64(b.ID)] = dto
 	}
 	return out
+}
+
+func Test(data map[string]interface{}) (models.HandlerOK, models.HandlerError) {
+	var (
+		errR models.HandlerError
+		resR models.HandlerOK
+	)
+
+	if len(CasesImpacted) == 0 {
+		FillCaseImpact()
+	}
+
+	// Check Token
+	userJWT, vErr, ok := validate.RequireString(data, "token", false)
+	if !ok {
+		return resR, vErr
+	}
+	resp, err := utils.VerifyJWT(userJWT)
+	if err != nil {
+		return resR, models.HandlerError{}
+	}
+	errCode, status, errType := utils.SafeExtractErrorStatus(resp)
+	if status != 1 {
+		errR.Type = errType
+		errR.Code = errCode
+		if resp["data"] != nil {
+			errR.Data = resp["data"]
+		}
+		return resR, errR
+	}
+
+	// Get Battle
+	battleId, vErr, ok := validate.RequireInt(data, "battleId")
+	if !ok {
+		return resR, vErr
+	}
+	battle, ok := GetBattle(battleId)
+	if !ok {
+		errR.Type = "NOT_FOUND"
+		errR.Code = 5003
+		return resR, errR
+	}
+
+	Roll(battleId, 0)
+
+	// Success
+	resR.Type = "test"
+	resR.Data = battle
+	return resR, errR
 }
 
 func Roll(battleID int64, roundKey int) {
@@ -705,6 +757,7 @@ func Roll(battleID int64, roundKey int) {
 
 		caseID := battle.Cases[roundKey]
 		caseData := CasesImpacted[caseID]
+
 		item := provablyfair.PickItem(
 			caseData,
 			battle.PFair["serverSeed"].(string),
