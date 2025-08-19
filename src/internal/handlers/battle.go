@@ -732,6 +732,14 @@ func Test(data map[string]interface{}) (models.HandlerOK, models.HandlerError) {
 }
 
 func Roll(battleID int64, roundKey int) {
+
+	if DbBots == nil || len(DbBots.Values) == 0 {
+		FillBots()
+	}
+	if len(CasesImpacted) == 0 {
+		FillCaseImpact()
+	}
+
 	battle, ok := GetBattle(battleID)
 	if !ok {
 		log.Println("Battle not found:", battleID)
