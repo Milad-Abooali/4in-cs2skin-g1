@@ -748,7 +748,7 @@ func Roll(battleID int64, roundKey int) {
 		return
 	}
 
-	battle.Status = fmt.Sprintf("Roll %d", roundKey)
+	battle.Status = fmt.Sprintf("Roll %d", roundKey+1)
 	battle.StatusCode = 1
 
 	if battle.Summery.Steps == nil {
