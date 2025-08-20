@@ -261,6 +261,40 @@ func NewBattle(data map[string]interface{}) (models.HandlerOK, models.HandlerErr
 		},
 	}
 
+	// Winner Team
+	switch newBattle.PlayerType {
+	case "1v1", "1v1v1", "1v1v1v1", "1v6":
+		for slot, _ := range newBattle.Slots {
+			newBattle.WinTeams = append(newBattle.WinTeams, models.WinTeam{
+				Slots: []string{slot},
+			})
+		}
+	case "2v2":
+		newBattle.WinTeams = append(newBattle.WinTeams, models.WinTeam{
+			Slots: []string{"s1", "s2"},
+		})
+		newBattle.WinTeams = append(newBattle.WinTeams, models.WinTeam{
+			Slots: []string{"s3", "s4"},
+		})
+	case "2v2v2":
+		newBattle.WinTeams = append(newBattle.WinTeams, models.WinTeam{
+			Slots: []string{"s1", "s2"},
+		})
+		newBattle.WinTeams = append(newBattle.WinTeams, models.WinTeam{
+			Slots: []string{"s3", "s4"},
+		})
+		newBattle.WinTeams = append(newBattle.WinTeams, models.WinTeam{
+			Slots: []string{"s5", "s6"},
+		})
+	case "3v3":
+		newBattle.WinTeams = append(newBattle.WinTeams, models.WinTeam{
+			Slots: []string{"s1", "s2", "s3"},
+		})
+		newBattle.WinTeams = append(newBattle.WinTeams, models.WinTeam{
+			Slots: []string{"s4", "s5", "s6"},
+		})
+	}
+
 	// Save to DB
 	battleJSON, err := json.Marshal(newBattle)
 	if err != nil {
@@ -852,6 +886,8 @@ func optionActions(battleID int64) {
 		return
 	}
 
+	// Winner Team
+
 	if len(battle.Options) == 0 {
 		// No Options - Default
 
@@ -867,8 +903,19 @@ func optionActions(battleID int64) {
 
 			switch opt {
 			case "fast spin":
+				// No Action
+
 			case "Private":
-			case "jackpot":
+				// No Action
+
+			case "Madness":
+				// Winner Based on count of rolls.
+
+			case "Jackpot":
+				// Winner Based on count of win on rolls.
+
+			case "Equality":
+				// Div win prize to all slots
 
 			}
 			executedOptions[opt] = true
@@ -923,12 +970,8 @@ func Test(data map[string]interface{}) (models.HandlerOK, models.HandlerError) {
 		return resR, errR
 	}
 
-	battle.Status = "Battle is running ..."
-	round := int(data["r"].(float64))
-	Roll(battleId, round)
-
 	// Success
 	resR.Type = "test"
-	resR.Data = battle
+	resR.Data = battle.WinTeams
 	return resR, errR
 }
