@@ -184,7 +184,7 @@ func EmitServer(req map[string]interface{}, resType string, resData interface{})
 
 	switch resType {
 
-	case "test", "ping", "getBots", "getCases":
+	case "test", "getBots", "getCases":
 	default:
 		log.Println("EmitToAnyEvent called:", resType)
 		EmitToAnyEvent("heartbeat", handlers.BuildBattleIndex(handlers.BattleIndex))

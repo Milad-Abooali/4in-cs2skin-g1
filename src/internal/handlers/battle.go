@@ -15,6 +15,7 @@ import (
 	"github.com/Milad-Abooali/4in-cs2skin-g1/src/utils"
 	"google.golang.org/protobuf/types/known/structpb"
 	"log"
+	"math"
 	"os"
 	"strconv"
 	"strings"
@@ -400,7 +401,7 @@ func SetSlotTeam(b *models.Battle, slotKey string, team int) {
 
 func AddTeamPrizes(b *models.Battle, slotKey string, Prizes float64) {
 	team := b.Slots[slotKey].Team
-	b.Teams[team].Prizes += Prizes
+	b.Teams[team].TotalPrizes += Prizes
 }
 
 func AddTeamRolWin(b *models.Battle, slotKey string) {
@@ -937,6 +938,10 @@ func GenerateShortBattleHash(battleID string) string {
 	return shortHash
 }
 
+func RoundToTwoDigits(val float64) float64 {
+	return math.Round(val*100) / 100
+}
+
 func optionActions(battleID int64) {
 	battle, ok := GetBattle(battleID)
 	if !ok {
@@ -945,47 +950,188 @@ func optionActions(battleID int64) {
 	}
 
 	// Winner Team
+	winner := battle.Teams[0]
 
 	if len(battle.Options) == 0 {
-		// No Options - Default
+		// No Options
+
+		for _, t := range battle.Teams {
+			if t.TotalPrizes > winner.TotalPrizes {
+				winner = t
+			}
+		}
 
 	} else {
 		// Handel Options
-		executedOptions := make(map[string]bool)
-		for _, o := range battle.Options {
-			opt := strings.ToLower(o)
-			if executedOptions[opt] {
-				continue
+
+		if inArray(battle.Options, "equality") {
+
+			for _, t := range battle.Teams {
+				if t.TotalPrizes > winner.TotalPrizes {
+					winner = t
+				}
 			}
-			log.Println(opt)
+			keys := make([]string, 0, len(battle.Summery.Prizes))
+			for k := range battle.Summery.Prizes {
+				keys = append(keys, k)
+			}
+			winner.Slots = keys
 
-			switch opt {
-			case "fast spin":
-				// No Action
+		} else {
+			if inArray(battle.Options, "madness") {
+				for _, t := range battle.Teams {
+					if t.TotalPrizes < winner.TotalPrizes {
+						winner = t
+					}
+				}
+			}
 
-			case "Private":
-				// No Action
+			if inArray(battle.Options, "jackpot") && !inArray(battle.Options, "madness") {
 
-			case "Madness":
-				// Winner Based on count of rolls.
-
-			case "Jackpot":
-				// Winner Based on count of win on rolls.
-
-			case "Equality":
-				// Div win prize to all slots
+				for _, t := range battle.Teams {
+					if t.RolWin > winner.RolWin {
+						winner = t
+					}
+				}
 
 			}
-			executedOptions[opt] = true
+
+			if inArray(battle.Options, "jackpot") && inArray(battle.Options, "madness") {
+
+				for _, t := range battle.Teams {
+					if t.RolWin < winner.RolWin {
+						winner = t
+					}
+				}
+
+			}
 		}
+
 	}
 
-	archive()
+	// Get Total Prize
+	var total float64
+	for _, v := range battle.Summery.Prizes {
+		total += v
+	}
+	battle.Summery.Winners = winner
+	battle.Summery.Winners.TotalPrizes = RoundToTwoDigits(total)
+	battle.Summery.Winners.SlotPrizes = RoundToTwoDigits(total / float64(len(battle.Summery.Winners.Slots)))
+
+	AddLog(battle, "Handel Options", 0)
+	UpdateBattle(battle)
+
+	archive(battle.ID)
+
 	return
 }
 
-func archive() {
+func archive(battleID int) (models.HandlerOK, models.HandlerError) {
+	var (
+		errR models.HandlerError
+		resR models.HandlerOK
+	)
 
+	battle, ok := GetBattle(int64(battleID))
+	if !ok {
+		log.Println("Battle not found:", battleID)
+		return resR, models.HandlerError{}
+	}
+
+	for _, v := range battle.Summery.Winners.Slots {
+		userID := battle.Slots[v].ID
+
+		// Skip Empty / Bot
+		if battle.Slots[v].Type != "Player" {
+			continue
+		}
+
+		// Wait for animation
+		time.Sleep(2 * time.Second)
+
+		// Get Users
+		resp, err := utils.GetUser(userID)
+		if err != nil {
+			return resR, models.HandlerError{}
+		}
+		errCode, status, errType := utils.SafeExtractErrorStatus(resp)
+		if status != 1 {
+			errR.Type = errType
+			errR.Code = errCode
+			if resp["data"] != nil {
+				errR.Data = resp["data"]
+			}
+			return resR, errR
+		}
+
+		// Add Transaction
+		Transaction, err := utils.AddTransaction(
+			userID,
+			"game_win",
+			strconv.Itoa(battleID),
+			battle.Summery.Winners.SlotPrizes,
+			"",
+			"Case Battle",
+		)
+		if err != nil {
+			return resR, models.HandlerError{}
+		}
+		errCode, status, errType = utils.SafeExtractErrorStatus(Transaction)
+		if status != 1 {
+			errR.Type = errType
+			errR.Code = errCode
+			if resp["data"] != nil {
+				errR.Data = resp["data"]
+			}
+			return resR, errR
+		}
+
+		// Wait for animation
+		time.Sleep(2 * time.Second)
+
+		UpdateBattle(battle)
+
+	}
+
+	battle.Status = "Archived"
+	battle.StatusCode = -1
+	UpdateBattle(battle)
+
+	// Wait for animation
+	time.Sleep(5 * time.Second)
+
+	// Sanitize and build query
+	query := fmt.Sprintf(
+		`Update g1_battles SET is_live = 0 WHERE id = %d`,
+		battle.ID,
+	)
+
+	// gRPC Call
+	res, err := grpcclient.SendQuery(query)
+	if err != nil || res == nil || res.Status != "ok" {
+		errR.Type = "PROFILE_GRPC_ERROR"
+		errR.Code = 1033
+		if res != nil {
+			errR.Data = res.Error
+		}
+		return resR, errR
+	}
+
+	// Extract gRPC struct
+	dataDB := res.Data.GetFields()
+
+	// DB result rows count
+	exist := dataDB["rows_affected"].GetNumberValue()
+	if exist == 0 {
+		errR.Type = "USER_NOT_FOUND"
+		errR.Code = 1035
+		return resR, errR
+	}
+
+	// Add To Battle Index
+	DeleteBattle(int64(battle.ID))
+
+	return resR, models.HandlerError{}
 }
 
 func Test(data map[string]interface{}) (models.HandlerOK, models.HandlerError) {
@@ -1033,6 +1179,9 @@ func Test(data map[string]interface{}) (models.HandlerOK, models.HandlerError) {
 
 	// Success
 	resR.Type = "test"
-	resR.Data = battle
+	resR.Data = map[string]interface{}{
+		"sum":  battle.Summery,
+		"team": battle.Teams,
+	}
 	return resR, errR
 }
