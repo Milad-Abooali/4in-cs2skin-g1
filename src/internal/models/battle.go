@@ -51,7 +51,7 @@ type Battle struct {
 	PFair      map[string]interface{} `json:"pFair"`
 	Logs       []BattleLog            `json:"logs"`
 	PrivateKey string                 `json:"privateKey"`
-	WinTeams   []WinTeam              `json:"winTeams"`
+	Teams      []Team                 `json:"teams"`
 }
 
 type BattleLog struct {
@@ -101,8 +101,8 @@ type BattleClient struct {
 	ServerSeedHash string          `json:"serverSeedHash"`
 }
 
-type WinTeam struct {
+type Team struct {
 	Slots  []string
-	Prizes int64
+	Prizes float64
 	RolWin int64
 }

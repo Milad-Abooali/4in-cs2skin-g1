@@ -120,11 +120,13 @@ func AddBot(data map[string]interface{}) (models.HandlerOK, models.HandlerError)
 	clientSeed := MD5UserID(botId)
 
 	// Join Battle
+	team := battle.Slots[slotK].Team
 	battle.Slots[slotK] = models.Slot{
 		ID:          botId,
 		DisplayName: botName,
 		ClientSeed:  clientSeed,
 		Type:        "Bot",
+		Team:        team,
 	}
 	battle.Bots = append(battle.Bots, botId)
 	AddClientSeed(battle.PFair, slotK, clientSeed)

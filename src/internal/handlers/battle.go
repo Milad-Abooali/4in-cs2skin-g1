@@ -261,65 +261,6 @@ func NewBattle(data map[string]interface{}) (models.HandlerOK, models.HandlerErr
 		},
 	}
 
-	// Winner Team
-	switch newBattle.PlayerType {
-	case "1v1", "1v1v1", "1v1v1v1", "1v6":
-		var i int = 0
-		for key, _ := range newBattle.Slots {
-			i++
-			newBattle.WinTeams = append(newBattle.WinTeams, models.WinTeam{
-				Slots: []string{key},
-			})
-			SetSlotTeam(newBattle, key, i)
-		}
-	case "2v2":
-		newBattle.WinTeams = append(newBattle.WinTeams, models.WinTeam{
-			Slots: []string{"s1", "s2"},
-		})
-		SetSlotTeam(newBattle, "s1", 1)
-		SetSlotTeam(newBattle, "s2", 1)
-
-		newBattle.WinTeams = append(newBattle.WinTeams, models.WinTeam{
-			Slots: []string{"s3", "s4"},
-		})
-		SetSlotTeam(newBattle, "s3", 2)
-		SetSlotTeam(newBattle, "s4", 2)
-
-	case "2v2v2":
-		newBattle.WinTeams = append(newBattle.WinTeams, models.WinTeam{
-			Slots: []string{"s1", "s2"},
-		})
-		SetSlotTeam(newBattle, "s1", 1)
-		SetSlotTeam(newBattle, "s2", 1)
-
-		newBattle.WinTeams = append(newBattle.WinTeams, models.WinTeam{
-			Slots: []string{"s3", "s4"},
-		})
-		SetSlotTeam(newBattle, "s3", 2)
-		SetSlotTeam(newBattle, "s4", 2)
-
-		newBattle.WinTeams = append(newBattle.WinTeams, models.WinTeam{
-			Slots: []string{"s5", "s6"},
-		})
-		SetSlotTeam(newBattle, "s5", 3)
-		SetSlotTeam(newBattle, "s6", 3)
-
-	case "3v3":
-		newBattle.WinTeams = append(newBattle.WinTeams, models.WinTeam{
-			Slots: []string{"s1", "s2", "s3"},
-		})
-		SetSlotTeam(newBattle, "s1", 1)
-		SetSlotTeam(newBattle, "s2", 1)
-		SetSlotTeam(newBattle, "s3", 1)
-
-		newBattle.WinTeams = append(newBattle.WinTeams, models.WinTeam{
-			Slots: []string{"s4", "s5", "s6"},
-		})
-		SetSlotTeam(newBattle, "s4", 2)
-		SetSlotTeam(newBattle, "s5", 2)
-		SetSlotTeam(newBattle, "s6", 2)
-	}
-
 	// Save to DB
 	battleJSON, err := json.Marshal(newBattle)
 	if err != nil {
@@ -366,6 +307,68 @@ func NewBattle(data map[string]interface{}) (models.HandlerOK, models.HandlerErr
 		newBattle.PrivateKey = PrivateKey
 	}
 
+	// Winner Team
+	switch newBattle.PlayerType {
+	case "1v1", "1v1v1", "1v1v1v1", "1v6":
+		var i int = 0
+		for key, _ := range newBattle.Slots {
+			newBattle.Teams = append(newBattle.Teams, models.Team{
+				Slots: []string{key},
+			})
+			log.Println(key, i)
+			SetSlotTeam(newBattle, key, i)
+			i++
+		}
+	case "2v2":
+		newBattle.Teams = append(newBattle.Teams, models.Team{
+			Slots: []string{"s1", "s2"},
+		})
+		SetSlotTeam(newBattle, "s1", 0)
+		SetSlotTeam(newBattle, "s2", 0)
+
+		newBattle.Teams = append(newBattle.Teams, models.Team{
+			Slots: []string{"s3", "s4"},
+		})
+		SetSlotTeam(newBattle, "s3", 1)
+		SetSlotTeam(newBattle, "s4", 1)
+
+	case "2v2v2":
+		newBattle.Teams = append(newBattle.Teams, models.Team{
+			Slots: []string{"s1", "s2"},
+		})
+		SetSlotTeam(newBattle, "s1", 0)
+		SetSlotTeam(newBattle, "s2", 0)
+
+		newBattle.Teams = append(newBattle.Teams, models.Team{
+			Slots: []string{"s3", "s4"},
+		})
+		SetSlotTeam(newBattle, "s3", 1)
+		SetSlotTeam(newBattle, "s4", 1)
+
+		newBattle.Teams = append(newBattle.Teams, models.Team{
+			Slots: []string{"s5", "s6"},
+		})
+		SetSlotTeam(newBattle, "s5", 2)
+		SetSlotTeam(newBattle, "s6", 2)
+
+	case "3v3":
+		newBattle.Teams = append(newBattle.Teams, models.Team{
+			Slots: []string{"s1", "s2", "s3"},
+		})
+		SetSlotTeam(newBattle, "s1", 0)
+		SetSlotTeam(newBattle, "s2", 0)
+		SetSlotTeam(newBattle, "s3", 0)
+
+		newBattle.Teams = append(newBattle.Teams, models.Team{
+			Slots: []string{"s4", "s5", "s6"},
+		})
+		SetSlotTeam(newBattle, "s4", 1)
+		SetSlotTeam(newBattle, "s5", 1)
+		SetSlotTeam(newBattle, "s6", 1)
+	}
+
+	log.Println(newBattle.Slots)
+
 	AddLog(newBattle, "create", int64(userID))
 
 	var update, errV = UpdateBattle(newBattle)
@@ -393,6 +396,16 @@ func SetSlotTeam(b *models.Battle, slotKey string, team int) {
 		slot.Team = team
 		b.Slots[slotKey] = slot
 	}
+}
+
+func AddTeamPrizes(b *models.Battle, slotKey string, Prizes float64) {
+	team := b.Slots[slotKey].Team
+	b.Teams[team].Prizes += Prizes
+}
+
+func AddTeamRolWin(b *models.Battle, slotKey string) {
+	team := b.Slots[slotKey].Team
+	b.Teams[team].RolWin++
 }
 
 func ToLowerArray(arr []string) []string {
@@ -697,11 +710,13 @@ func Join(data map[string]interface{}) (models.HandlerOK, models.HandlerError) {
 
 	// Join Battle
 	clientSeed := MD5UserID(userID)
+	team := battle.Slots[slotK].Team
 	battle.Slots[slotK] = models.Slot{
 		ID:          userID,
 		DisplayName: displayName,
 		ClientSeed:  clientSeed,
 		Type:        "Players",
+		Team:        team,
 	}
 	battle.Players = append(battle.Players, userID)
 	AddClientSeed(battle.PFair, slotK, clientSeed)
@@ -855,6 +870,11 @@ func Roll(battleID int64, roundKey int) {
 		caseID := battle.Cases[roundKey]
 		caseData := CasesImpacted[caseID]
 
+		var (
+			rollWinner string
+			lastPrize  float64
+		)
+		lastPrize = 0
 		for slot, _ := range battle.Slots {
 			clientSeed, ok := battle.PFair["clientSeed"].(map[string]interface{})[slot].(string)
 			if !ok {
@@ -871,7 +891,7 @@ func Roll(battleID int64, roundKey int) {
 			)
 
 			if configs.Debug {
-				log.Println("Roll", slot, caseID, nonce, item["price"])
+				log.Println("Roll "+strconv.Itoa(roundKey), slot, caseID, nonce, item["price"])
 			}
 
 			if item == nil {
@@ -890,8 +910,14 @@ func Roll(battleID int64, roundKey int) {
 
 			battle.Summery.Steps[roundKey] = append(battle.Summery.Steps[roundKey], step)
 			battle.Summery.Prizes[slot] += step.Price
+			AddTeamPrizes(battle, slot, step.Price)
 
+			if lastPrize < step.Price {
+				rollWinner = slot
+			}
+			lastPrize = step.Price
 		}
+		AddTeamRolWin(battle, rollWinner)
 
 		AddLog(battle, fmt.Sprintf("Roll %d", roundKey+1), 0)
 		UpdateBattle(battle)
