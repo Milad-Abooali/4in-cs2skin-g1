@@ -8,7 +8,8 @@ type Slot struct {
 	ID          int    `json:"id"`
 	DisplayName string `json:"display_name"`
 	ClientSeed  string `json:"client_seed"`
-	Type        string `json:"type"` // player یا bot
+	Type        string `json:"type"` // Player / Bot / Empty
+	Team        int    `json:"team"`
 }
 
 type StepResult struct {

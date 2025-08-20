@@ -264,35 +264,60 @@ func NewBattle(data map[string]interface{}) (models.HandlerOK, models.HandlerErr
 	// Winner Team
 	switch newBattle.PlayerType {
 	case "1v1", "1v1v1", "1v1v1v1", "1v6":
-		for slot, _ := range newBattle.Slots {
+		var i int = 0
+		for key, _ := range newBattle.Slots {
+			i++
 			newBattle.WinTeams = append(newBattle.WinTeams, models.WinTeam{
-				Slots: []string{slot},
+				Slots: []string{key},
 			})
+			SetSlotTeam(newBattle, key, i)
 		}
 	case "2v2":
 		newBattle.WinTeams = append(newBattle.WinTeams, models.WinTeam{
 			Slots: []string{"s1", "s2"},
 		})
+		SetSlotTeam(newBattle, "s1", 1)
+		SetSlotTeam(newBattle, "s2", 1)
+
 		newBattle.WinTeams = append(newBattle.WinTeams, models.WinTeam{
 			Slots: []string{"s3", "s4"},
 		})
+		SetSlotTeam(newBattle, "s3", 2)
+		SetSlotTeam(newBattle, "s4", 2)
+
 	case "2v2v2":
 		newBattle.WinTeams = append(newBattle.WinTeams, models.WinTeam{
 			Slots: []string{"s1", "s2"},
 		})
+		SetSlotTeam(newBattle, "s1", 1)
+		SetSlotTeam(newBattle, "s2", 1)
+
 		newBattle.WinTeams = append(newBattle.WinTeams, models.WinTeam{
 			Slots: []string{"s3", "s4"},
 		})
+		SetSlotTeam(newBattle, "s3", 2)
+		SetSlotTeam(newBattle, "s4", 2)
+
 		newBattle.WinTeams = append(newBattle.WinTeams, models.WinTeam{
 			Slots: []string{"s5", "s6"},
 		})
+		SetSlotTeam(newBattle, "s5", 3)
+		SetSlotTeam(newBattle, "s6", 3)
+
 	case "3v3":
 		newBattle.WinTeams = append(newBattle.WinTeams, models.WinTeam{
 			Slots: []string{"s1", "s2", "s3"},
 		})
+		SetSlotTeam(newBattle, "s1", 1)
+		SetSlotTeam(newBattle, "s2", 1)
+		SetSlotTeam(newBattle, "s3", 1)
+
 		newBattle.WinTeams = append(newBattle.WinTeams, models.WinTeam{
 			Slots: []string{"s4", "s5", "s6"},
 		})
+		SetSlotTeam(newBattle, "s4", 2)
+		SetSlotTeam(newBattle, "s5", 2)
+		SetSlotTeam(newBattle, "s6", 2)
 	}
 
 	// Save to DB
@@ -361,6 +386,13 @@ func inArray[T comparable](arr []T, item T) bool {
 		}
 	}
 	return false
+}
+
+func SetSlotTeam(b *models.Battle, slotKey string, team int) {
+	if slot, ok := b.Slots[slotKey]; ok {
+		slot.Team = team
+		b.Slots[slotKey] = slot
+	}
 }
 
 func ToLowerArray(arr []string) []string {
@@ -929,6 +961,7 @@ func optionActions(battleID int64) {
 func archive() {
 
 }
+
 func Test(data map[string]interface{}) (models.HandlerOK, models.HandlerError) {
 	var (
 		errR models.HandlerError
@@ -970,8 +1003,10 @@ func Test(data map[string]interface{}) (models.HandlerOK, models.HandlerError) {
 		return resR, errR
 	}
 
+	Roll(battleId, 0)
+
 	// Success
 	resR.Type = "test"
-	resR.Data = battle.WinTeams
+	resR.Data = battle
 	return resR, errR
 }
