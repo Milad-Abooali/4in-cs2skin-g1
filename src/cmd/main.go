@@ -3,7 +3,6 @@ package main
 import (
 	"github.com/Milad-Abooali/4in-cs2skin-g1/src/internal/web"
 	"github.com/Milad-Abooali/4in-cs2skin-g1/src/internal/ws"
-	"github.com/Milad-Abooali/4in-cs2skin-g1/src/utils"
 	"log"
 	"net/http"
 	"os"
@@ -42,10 +41,10 @@ func main() {
 	grpcclient.TestConnection()
 
 	// WebSocket
-	http.HandleFunc("/ws", utils.WithCORS(ws.HandleWebSocket))
+	http.HandleFunc("/ws", ws.HandleWebSocket)
 
 	// HTTP
-	http.HandleFunc("/web", utils.WithCORS(withAPIVersion(web.HandleHTTP)))
+	http.HandleFunc("/web", withAPIVersion(web.HandleHTTP))
 
 	port := os.Getenv("PORT")
 	if port == "" {
