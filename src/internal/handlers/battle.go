@@ -1273,6 +1273,8 @@ func GetBattleHistory(data map[string]interface{}) (models.HandlerOK, models.Han
 		}
 	}
 
+	// @todo - remove some items
+
 	// Success
 	resR.Type = "getBattleHistory"
 	resR.Data = battleMap
