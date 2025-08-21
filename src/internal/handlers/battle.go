@@ -926,6 +926,9 @@ func Roll(battleID int64, roundKey int) {
 		UpdateBattle(battle)
 	}
 
+	// Wait for animation
+	time.Sleep(7 * time.Second)
+
 	Roll(battleID, roundKey+1)
 }
 

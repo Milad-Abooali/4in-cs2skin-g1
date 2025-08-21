@@ -92,6 +92,7 @@ func HandleWebSocket(w http.ResponseWriter, r *http.Request) {
 		"apiVersion": configs.Version,
 		"serverTime": time.Now().UTC().Format(time.RFC3339),
 	})
+	EmitToAnyEvent("heartbeat", handlers.BuildBattleIndex(handlers.BattleIndex))
 
 	// Fill BattleIndex From DB
 	if len(handlers.BattleIndex) == 0 {

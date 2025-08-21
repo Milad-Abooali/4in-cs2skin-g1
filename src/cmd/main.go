@@ -1,11 +1,13 @@
 package main
 
 import (
+	"github.com/Milad-Abooali/4in-cs2skin-g1/src/internal/handlers"
 	"github.com/Milad-Abooali/4in-cs2skin-g1/src/internal/web"
 	"github.com/Milad-Abooali/4in-cs2skin-g1/src/internal/ws"
 	"log"
 	"net/http"
 	"os"
+	"time"
 
 	"github.com/Milad-Abooali/4in-cs2skin-g1/src/configs"
 	"github.com/Milad-Abooali/4in-cs2skin-g1/src/internal/grpcclient"
@@ -50,6 +52,23 @@ func main() {
 	if port == "" {
 		port = "8080"
 	}
+
+	handlers.FillBattleIndex()
+	handlers.FillBots()
+	handlers.FillCaseImpact()
+
+	go func() {
+		ticker := time.NewTicker(4 * time.Second)
+		defer ticker.Stop()
+
+		for {
+			select {
+			case <-ticker.C:
+				ws.EmitToAnyEvent("heartbeat", handlers.BuildBattleIndex(handlers.BattleIndex))
+			}
+		}
+
+	}()
 
 	log.Println("Web server running on port", port)
 	log.Fatal(http.ListenAndServe(":"+port, nil))
