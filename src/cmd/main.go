@@ -57,19 +57,6 @@ func main() {
 	handlers.FillBots()
 	handlers.FillCaseImpact()
 
-	go func() {
-		ticker := time.NewTicker(4 * time.Second)
-		defer ticker.Stop()
-
-		for {
-			select {
-			case <-ticker.C:
-				ws.EmitToAnyEvent("heartbeat", handlers.BuildBattleIndex(handlers.BattleIndex))
-			}
-		}
-
-	}()
-
 	log.Println("Web server running on port", port)
 	log.Fatal(http.ListenAndServe(":"+port, nil))
 }

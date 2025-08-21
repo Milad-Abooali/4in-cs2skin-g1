@@ -1229,11 +1229,52 @@ func GetBattleHistory(data map[string]interface{}) (models.HandlerOK, models.Han
 		errR.Code = 1035
 		return resR, errR
 	}
-	dbBattles := dataDB["rows"].GetListValue()
-	battleJSON := dbBattles.GetValues() // JSON string
+
+	// Get rows
+	rows := dataDB["rows"].GetListValue().Values
+	if len(rows) == 0 {
+		errR.Type = "Battle_NOT_FOUND"
+		errR.Code = 1035
+		return resR, errR
+	}
+
+	row := rows[0].GetStructValue()
+	if row == nil {
+		errR.Type = "BATTLE_ROW_EMPTY"
+		errR.Code = 1038
+		return resR, errR
+	}
+
+	fields := row.GetFields()
+
+	battleVal := fields["battle"]
+	battleStr := battleVal.GetStringValue()
+
+	var battleMap map[string]interface{}
+
+	if strings.HasPrefix(battleStr, "{") {
+		if err := json.Unmarshal([]byte(battleStr), &battleMap); err != nil {
+			errR.Type = "BATTLE_JSON_ERROR"
+			errR.Code = 1036
+			return resR, errR
+		}
+	} else {
+		unquoted, err := strconv.Unquote(battleStr)
+		if err != nil {
+			errR.Type = "BATTLE_JSON_DECODE_ERROR"
+			errR.Code = 1037
+			return resR, errR
+		}
+
+		if err := json.Unmarshal([]byte(unquoted), &battleMap); err != nil {
+			errR.Type = "BATTLE_JSON_ERROR"
+			errR.Code = 1036
+			return resR, errR
+		}
+	}
 
 	// Success
 	resR.Type = "getBattleHistory"
-	resR.Data = battleJSON
+	resR.Data = battleMap
 	return resR, errR
 }
