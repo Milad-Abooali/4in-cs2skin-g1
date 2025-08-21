@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"github.com/Milad-Abooali/4in-cs2skin-g1/src/configs"
 	errorsreg "github.com/Milad-Abooali/4in-cs2skin-g1/src/internal/errors"
+	"github.com/Milad-Abooali/4in-cs2skin-g1/src/internal/events"
 	"github.com/Milad-Abooali/4in-cs2skin-g1/src/internal/models"
 	"github.com/gorilla/websocket"
 	"log"
@@ -74,5 +75,18 @@ func SendWebError(w http.ResponseWriter, resType string, eCode int, eExtra ...an
 	err := json.NewEncoder(w).Encode(resp)
 	if err != nil {
 		return
+	}
+}
+
+func EmitServer(req map[string]interface{}, resType string, resData interface{}) {
+	switch resType {
+	case "test", "getBots", "getCases", "getBattleHistory":
+		// no emit
+	default:
+		events.Bus <- events.Event{
+			Target: "all",
+			Type:   "heartbeat",
+			Data:   BuildBattleIndex(BattleIndex),
+		}
 	}
 }

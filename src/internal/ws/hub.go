@@ -2,6 +2,7 @@ package ws
 
 import (
 	"encoding/json"
+	"github.com/Milad-Abooali/4in-cs2skin-g1/src/internal/events"
 	"github.com/Milad-Abooali/4in-cs2skin-g1/src/internal/handlers"
 	"sync"
 	"time"
@@ -189,4 +190,21 @@ func EmitServer(req map[string]interface{}, resType string, resData interface{})
 		EmitToAnyEvent("heartbeat", handlers.BuildBattleIndex(handlers.BattleIndex))
 	}
 
+}
+
+func EmitEventLoop() {
+	go func() {
+		for ev := range events.Bus {
+			switch ev.Target {
+			case "all":
+				EmitToAnyEvent(ev.Type, ev.Data)
+			case "user":
+				EmitToUserEvent(ev.UserID, ev.Type, ev.Data)
+			case "allUsers":
+				EmitToAllUsersEvent(ev.Type, ev.Data)
+			case "guests":
+				EmitToGuestsEvent(ev.Type, ev.Data)
+			}
+		}
+	}()
 }

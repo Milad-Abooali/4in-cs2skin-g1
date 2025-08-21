@@ -42,6 +42,7 @@ func main() {
 	grpcclient.TestConnection()
 
 	// WebSocket
+	ws.EmitEventLoop()
 	http.HandleFunc("/ws", ws.HandleWebSocket)
 
 	// HTTP

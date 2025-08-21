@@ -8,6 +8,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/Milad-Abooali/4in-cs2skin-g1/src/configs"
+	"github.com/Milad-Abooali/4in-cs2skin-g1/src/internal/events"
 	"github.com/Milad-Abooali/4in-cs2skin-g1/src/internal/grpcclient"
 	"github.com/Milad-Abooali/4in-cs2skin-g1/src/internal/models"
 	"github.com/Milad-Abooali/4in-cs2skin-g1/src/internal/provablyfair"
@@ -851,7 +852,7 @@ func Roll(battleID int64, roundKey int) {
 	} else {
 
 		// Wait for animation
-		time.Sleep(3 * time.Second)
+		time.Sleep(1 * time.Second)
 
 		// Check max roll
 		if roundKey < 0 || roundKey >= len(battle.Cases) {
@@ -860,6 +861,13 @@ func Roll(battleID int64, roundKey int) {
 			if configs.Debug {
 				log.Printf("Battle %d steps(%d) are done.", battleID, roundKey)
 			}
+
+			// Emit | heartbeat
+			events.Emit("all", "heartbeat", BuildBattleIndex(BattleIndex))
+
+			// Wait for animation
+			time.Sleep(30 * time.Second)
+
 			// Go to check Options
 			optionActions(battleID)
 			return
@@ -931,9 +939,6 @@ func Roll(battleID int64, roundKey int) {
 		AddLog(battle, fmt.Sprintf("Roll %d", roundKey+1), 0)
 		UpdateBattle(battle)
 	}
-
-	// Wait for animation
-	time.Sleep(7 * time.Second)
 
 	Roll(battleID, roundKey+1)
 }
@@ -1032,6 +1037,12 @@ func optionActions(battleID int64) {
 	AddLog(battle, "Handel Options", 0)
 	UpdateBattle(battle)
 
+	// Emit | heartbeat
+	events.Emit("all", "heartbeat", BuildBattleIndex(BattleIndex))
+
+	// Wait for animation
+	time.Sleep(1 * time.Second)
+
 	archive(battle.ID)
 
 	return
@@ -1056,9 +1067,6 @@ func archive(battleID int) (models.HandlerOK, models.HandlerError) {
 		if battle.Slots[v].Type != "Player" {
 			continue
 		}
-
-		// Wait for animation
-		time.Sleep(2 * time.Second)
 
 		// Get Users
 		resp, err := utils.GetUser(userID)
@@ -1097,9 +1105,6 @@ func archive(battleID int) (models.HandlerOK, models.HandlerError) {
 			return resR, errR
 		}
 
-		// Wait for animation
-		time.Sleep(2 * time.Second)
-
 		UpdateBattle(battle)
 
 	}
@@ -1107,9 +1112,6 @@ func archive(battleID int) (models.HandlerOK, models.HandlerError) {
 	battle.Status = "Archived"
 	battle.StatusCode = -1
 	UpdateBattle(battle)
-
-	// Wait for animation
-	time.Sleep(5 * time.Second)
 
 	// Sanitize and build query
 	query := fmt.Sprintf(
@@ -1139,8 +1141,14 @@ func archive(battleID int) (models.HandlerOK, models.HandlerError) {
 		return resR, errR
 	}
 
+	// Wait for animation
+	time.Sleep(60 * time.Second)
+
 	// Add To Battle Index
 	DeleteBattle(int64(battle.ID))
+
+	// Emit | heartbeat
+	events.Emit("all", "heartbeat", BuildBattleIndex(BattleIndex))
 
 	return resR, models.HandlerError{}
 }
@@ -1186,14 +1194,13 @@ func Test(data map[string]interface{}) (models.HandlerOK, models.HandlerError) {
 		return resR, errR
 	}
 
+	events.Emit("all", "heartbeat", battle)
+
 	Roll(battleId, 0)
 
 	// Success
 	resR.Type = "test"
-	resR.Data = map[string]interface{}{
-		"sum":  battle.Summery,
-		"team": battle.Teams,
-	}
+	resR.Data = ""
 	return resR, errR
 }
 
