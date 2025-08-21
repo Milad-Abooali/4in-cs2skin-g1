@@ -143,13 +143,19 @@ func AddBot(data map[string]interface{}) (models.HandlerOK, models.HandlerError)
 	if emptyCount == 0 {
 		// Force To Roll
 		battle.Status = "Battle is running ..."
-		Roll(int64(battle.ID), 0)
+		var update, errV = UpdateBattle(battle)
+		if update != true {
+			return resR, errV
+		}
+		go func(bid int) {
+			Roll(int64(battle.ID), 0)
+		}(battle.ID)
 	} else {
 		battle.Status = fmt.Sprintf(`Waiting for %d users`, emptyCount)
-	}
-	var update, errV = UpdateBattle(battle)
-	if update != true {
-		return resR, errV
+		var update, errV = UpdateBattle(battle)
+		if update != true {
+			return resR, errV
+		}
 	}
 
 	// Success
