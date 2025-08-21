@@ -1190,3 +1190,50 @@ func Test(data map[string]interface{}) (models.HandlerOK, models.HandlerError) {
 	}
 	return resR, errR
 }
+
+func GetBattleHistory(data map[string]interface{}) (models.HandlerOK, models.HandlerError) {
+	var (
+		errR models.HandlerError
+		resR models.HandlerOK
+	)
+
+	battleID, vErr, ok := validate.RequireInt(data, "battleId")
+	if !ok {
+		return resR, vErr
+	}
+
+	// Sanitize and build query
+	query := fmt.Sprintf(
+		`SELECT battle FROM g1_battles WHERE id = %d`,
+		battleID,
+	)
+
+	// gRPC Call
+	res, err := grpcclient.SendQuery(query)
+	if err != nil || res == nil || res.Status != "ok" {
+		errR.Type = "PROFILE_GRPC_ERROR"
+		errR.Code = 1033
+		if res != nil {
+			errR.Data = res.Error
+		}
+		return resR, errR
+	}
+
+	// Extract gRPC struct
+	dataDB := res.Data.GetFields()
+
+	// DB result rows count
+	exist := dataDB["count"].GetNumberValue()
+	if exist == 0 {
+		errR.Type = "Battle_NOT_FOUND"
+		errR.Code = 1035
+		return resR, errR
+	}
+	dbBattles := dataDB["rows"].GetListValue()
+	battleJSON := dbBattles.GetValues() // JSON string
+
+	// Success
+	resR.Type = "getBattleHistory"
+	resR.Data = battleJSON
+	return resR, errR
+}

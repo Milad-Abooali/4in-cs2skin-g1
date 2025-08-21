@@ -45,6 +45,11 @@ var wsRoutes = map[string]func(*websocket.Conn, map[string]interface{}, int64){
 		dispatch(c, reqId, handlers.GetCases, d)
 	},
 
+	// Database
+	"getBattleHistory": func(c *websocket.Conn, d map[string]interface{}, reqId int64) {
+		dispatch(c, reqId, handlers.GetBattleHistory, d)
+	},
+
 	// User Actions
 	"newBattle": func(c *websocket.Conn, d map[string]interface{}, reqId int64) {
 		dispatch(c, reqId, handlers.NewBattle, d)

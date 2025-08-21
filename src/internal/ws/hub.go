@@ -182,7 +182,7 @@ func EmitToGuestsEvent(eventType string, data any) {
 func EmitServer(req map[string]interface{}, resType string, resData interface{}) {
 
 	switch resType {
-	case "test", "getBots", "getCases":
+	case "test", "getBots", "getCases", "getBattleHistory":
 		// No Emit
 
 	default:
