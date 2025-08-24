@@ -2,7 +2,6 @@ package handlers
 
 import (
 	"crypto/hmac"
-	"crypto/md5"
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
@@ -16,7 +15,6 @@ import (
 	"github.com/Milad-Abooali/4in-cs2skin-g1/src/utils"
 	"google.golang.org/protobuf/types/known/structpb"
 	"log"
-	"math"
 	"os"
 	"strconv"
 	"strings"
@@ -29,30 +27,6 @@ var (
 	BattleIndexOut = make(map[int64]*models.BattleClient)
 	battleIndexMu  sync.RWMutex
 )
-
-// GetBattle Safe Battle Actions
-func GetBattle(id int64) (*models.Battle, bool) {
-	battleIndexMu.RLock()
-	defer battleIndexMu.RUnlock()
-	b, ok := BattleIndex[id]
-	return b, ok
-}
-
-// SetBattle Safe Battle Actions
-func SetBattle(id int64, b *models.Battle) {
-	battleIndexMu.Lock()
-	defer battleIndexMu.Unlock()
-	BattleIndex[id] = b
-}
-
-// DeleteBattle Safe Battle Actions
-func DeleteBattle(id int64) {
-	AddLog(BattleIndex[id], "archive", int64(0))
-
-	battleIndexMu.Lock()
-	defer battleIndexMu.Unlock()
-	delete(BattleIndex, id)
-}
 
 // NewBattle - Handler
 func NewBattle(data map[string]interface{}) (models.HandlerOK, models.HandlerError) {
@@ -99,7 +73,7 @@ func NewBattle(data map[string]interface{}) (models.HandlerOK, models.HandlerErr
 	// Make Battle
 	newBattle := &models.Battle{
 		PlayerType: fmt.Sprintf("%v", data["playerType"]),
-		Options:    ToLowerArray(options),
+		Options:    utils.ToLowerArray(options),
 		Cases:      expandCases(castCases(data["cases"])),
 		CasesUi:    castCases(data["cases"]),
 		Players:    []int{},
@@ -151,7 +125,7 @@ func NewBattle(data map[string]interface{}) (models.HandlerOK, models.HandlerErr
 									log.Println("Unknown price type:", v)
 									continue
 								}
-								newBattle.Cost += price
+								newBattle.Cost += utils.RoundToTwoDigits(price)
 
 							} else {
 								errR.Type = "INVALID_CASE_ID"
@@ -250,7 +224,7 @@ func NewBattle(data map[string]interface{}) (models.HandlerOK, models.HandlerErr
 	// Join Battle
 	newBattle.Players = append(newBattle.Players, userID)
 	newBattle.CreatedBy = userID
-	clientSeed := MD5UserID(userID)
+	clientSeed := utils.MD5UserID(userID)
 	newBattle.Slots["s1"] = models.Slot{
 		ID:          userID,
 		DisplayName: displayName,
@@ -309,7 +283,7 @@ func NewBattle(data map[string]interface{}) (models.HandlerOK, models.HandlerErr
 	newBattle.ID = id
 
 	// Options : Private
-	if inArray(newBattle.Options, "private") {
+	if utils.InArray(newBattle.Options, "private") {
 		PrivateKey := GenerateShortBattleHash(strconv.Itoa(id))
 		newBattle.PrivateKey = PrivateKey
 	}
@@ -389,209 +363,7 @@ func NewBattle(data map[string]interface{}) (models.HandlerOK, models.HandlerErr
 	return resR, errR
 }
 
-// inArray - Helper
-func inArray[T comparable](arr []T, item T) bool {
-	for _, v := range arr {
-		if v == item {
-			return true
-		}
-	}
-	return false
-}
-
-func SetSlotTeam(b *models.Battle, slotKey string, team int) {
-	if slot, ok := b.Slots[slotKey]; ok {
-		slot.Team = team
-		b.Slots[slotKey] = slot
-	}
-}
-
-func AddTeamPrizes(b *models.Battle, slotKey string, Prizes float64) {
-	team := b.Slots[slotKey].Team
-	b.Teams[team].TotalPrizes += Prizes
-}
-
-func AddTeamRolWin(b *models.Battle, slotKey string) {
-	team := b.Slots[slotKey].Team
-	b.Teams[team].RolWin++
-}
-
-func ToLowerArray(arr []string) []string {
-	lowerArr := make([]string, len(arr))
-	for i, v := range arr {
-		lowerArr[i] = strings.ToLower(v)
-	}
-	return lowerArr
-}
-
-func castStringSlice(val interface{}) []string {
-	out := []string{}
-	if arr, ok := val.([]interface{}); ok {
-		for _, v := range arr {
-			out = append(out, fmt.Sprintf("%v", v))
-		}
-	}
-	return out
-}
-
-func castCases(val interface{}) []map[string]int {
-	out := []map[string]int{}
-	if arr, ok := val.([]interface{}); ok {
-		for _, v := range arr {
-			if m, ok := v.(map[interface{}]interface{}); ok { // بسته به decode WS
-				newMap := map[string]int{}
-				for key, value := range m {
-					k := fmt.Sprintf("%v", key)
-					if n, ok := value.(float64); ok {
-						newMap[k] = int(n)
-					}
-				}
-				out = append(out, newMap)
-			} else if m, ok := v.(map[string]interface{}); ok {
-				newMap := map[string]int{}
-				for key, value := range m {
-					if n, ok := value.(float64); ok {
-						newMap[key] = int(n)
-					}
-				}
-				out = append(out, newMap)
-			}
-		}
-	}
-	return out
-}
-
-func UpdateBattle(battle *models.Battle) (bool, models.HandlerError) {
-	var (
-		errR models.HandlerError
-		bID  int = battle.ID
-	)
-	battle.UpdatedAt = time.Now()
-	battleJSON, err := json.Marshal(battle)
-	if err != nil {
-		errR.Type = "json.Marshal(battle)"
-		errR.Code = 1027
-		return false, errR
-	}
-	// Sanitize and build query
-	query := fmt.Sprintf(
-		`Update g1_battles SET battle = '%s' WHERE id = %d`,
-		string(battleJSON),
-		bID,
-	)
-
-	// gRPC Call
-	res, err := grpcclient.SendQuery(query)
-	if err != nil || res == nil || res.Status != "ok" {
-		errR.Type = "PROFILE_GRPC_ERROR"
-		errR.Code = 1033
-		if res != nil {
-			errR.Data = res.Error
-		}
-		return false, errR
-	}
-
-	// Extract gRPC struct
-	dataDB := res.Data.GetFields()
-
-	// DB result rows count
-	exist := dataDB["rows_affected"].GetNumberValue()
-	if exist == 0 {
-		errR.Type = "USER_NOT_FOUND"
-		errR.Code = 1035
-		return false, errR
-	}
-
-	// Add To Battle Index
-	SetBattle(int64(battle.ID), battle)
-
-	return true, errR
-}
-
-func ToBattleResponse(b *models.Battle) models.BattleCreated {
-	slots := make(map[string]models.SlotResp)
-	for k, v := range b.Slots {
-		slots[k] = models.SlotResp{
-			ID:          v.ID,
-			DisplayName: v.DisplayName,
-			Type:        v.Type,
-		}
-	}
-	return models.BattleCreated{
-		ID:         b.ID,
-		PlayerType: b.PlayerType,
-		Options:    b.Options,
-		CaseCounts: b.CaseCounts,
-		Cost:       b.Cost,
-		Slots:      slots,
-		Status:     b.Status,
-		Summery:    b.Summery,
-		CreatedAt:  b.CreatedAt,
-		PrivateKey: b.PrivateKey,
-	}
-}
-
-func MD5UserID(userID int) string {
-	data := []byte(fmt.Sprintf("%d", userID))
-	hash := md5.Sum(data)
-	return hex.EncodeToString(hash[:])
-}
-
-func FillBattleIndex() (bool, models.HandlerError) {
-	var (
-		errR      models.HandlerError
-		dbBattles *structpb.ListValue
-	)
-
-	log.Println("Fill BattleIndex..")
-
-	// Sanitize and build query
-	query := `SELECT battle FROM g1_battles WHERE is_live=1`
-
-	// gRPC Call
-	res, err := grpcclient.SendQuery(query)
-	if err != nil || res == nil || res.Status != "ok" {
-		errR.Type = "PROFILE_GRPC_ERROR"
-		errR.Code = 1033
-		if res != nil {
-			errR.Data = res.Error
-		}
-		return false, errR
-	}
-	// Extract gRPC struct
-	dataDB := res.Data.GetFields()
-	// DB result rows count
-	exist := dataDB["count"].GetNumberValue()
-	if exist == 0 {
-		errR.Type = "DB_DATA"
-		errR.Code = 1070
-		return false, errR
-	}
-	// DB result rows get fields
-	dbBattles = dataDB["rows"].GetListValue()
-
-	for idx, row := range dbBattles.Values {
-		structRow := row.GetStructValue()
-		battleJSON := structRow.Fields["battle"].GetStringValue() // JSON string
-
-		var b models.Battle
-		err := json.Unmarshal([]byte(battleJSON), &b)
-		if err != nil {
-			log.Println("Failed to unmarshal battle:", err)
-			continue
-		}
-
-		key := int64(b.ID)
-		if key == 0 {
-			key = int64(idx + 1)
-		}
-
-		BattleIndex[key] = &b
-	}
-
-	return true, errR
-}
-
+// Join - Handler
 func Join(data map[string]interface{}) (models.HandlerOK, models.HandlerError) {
 	var (
 		errR models.HandlerError
@@ -647,7 +419,7 @@ func Join(data map[string]interface{}) (models.HandlerOK, models.HandlerError) {
 	}
 
 	// Options : Private
-	if inArray(battle.Options, "private") {
+	if utils.InArray(battle.Options, "private") {
 		privateKey, vErr, ok := validate.RequireString(data, "privateKey", false)
 		if !ok {
 			return resR, vErr
@@ -717,7 +489,7 @@ func Join(data map[string]interface{}) (models.HandlerOK, models.HandlerError) {
 	}
 
 	// Join Battle
-	clientSeed := MD5UserID(userID)
+	clientSeed := utils.MD5UserID(userID)
 	team := battle.Slots[slotK].Team
 	battle.Slots[slotK] = models.Slot{
 		ID:          userID,
@@ -765,390 +537,7 @@ func Join(data map[string]interface{}) (models.HandlerOK, models.HandlerError) {
 	return resR, errR
 }
 
-func IsPlayerInBattle(players []int, userID int) bool {
-	for _, id := range players {
-		if id == userID {
-			return true
-		}
-	}
-	return false
-}
-
-func AddClientSeed(battle map[string]interface{}, key string, value interface{}) {
-	cs, ok := battle["clientSeed"].(map[string]interface{})
-	if !ok {
-		cs = make(map[string]interface{})
-		battle["clientSeed"] = cs
-	}
-	cs[key] = value
-}
-
-func AddLog(b *models.Battle, action string, userID int64) {
-	b.Logs = append(b.Logs, models.BattleLog{
-		Time:   time.Now().UTC().Format(time.RFC3339),
-		Action: action,
-		UserID: userID,
-	})
-}
-
-func RemoveClientSeed(battle map[string]interface{}, key string) {
-	cs, ok := battle["clientSeed"].(map[string]interface{})
-	if !ok {
-		return
-	}
-	delete(cs, key)
-}
-
-func BuildBattleIndex(battles map[int64]*models.Battle) map[int64]models.BattleClient {
-	out := make(map[int64]models.BattleClient)
-	for _, b := range battles {
-		dto := models.BattleClient{
-			ID:             b.ID,
-			PlayerType:     b.PlayerType,
-			Options:        b.Options,
-			Cases:          b.Cases,
-			CasesUi:        b.CasesUi,
-			CaseCounts:     b.CaseCounts,
-			Cost:           b.Cost,
-			Slots:          b.Slots,
-			Status:         b.Status,
-			StatusCode:     b.StatusCode,
-			Summery:        b.Summery,
-			CreatedAt:      b.CreatedAt,
-			UpdatedAt:      b.UpdatedAt,
-			ServerSeedHash: b.PFair["serverSeedHash"].(string),
-		}
-		out[int64(b.ID)] = dto
-	}
-	return out
-}
-
-func expandCases(input []map[string]int) []int {
-	var out []int
-	for _, m := range input {
-		for k, count := range m {
-			caseID, _ := strconv.Atoi(k)
-			for i := 0; i < count; i++ {
-				out = append(out, caseID)
-			}
-		}
-	}
-	return out
-}
-
-func Roll(battleID int64, roundKey int) {
-
-	if DbBots == nil || len(DbBots.Values) == 0 {
-		FillBots()
-	}
-	if len(CasesImpacted) == 0 {
-		FillCaseImpact()
-	}
-
-	battle, ok := GetBattle(battleID)
-	if !ok {
-		log.Println("Battle not found:", battleID)
-		return
-	}
-
-	// Check if roll has already done
-	if steps, exists := battle.Summery.Steps[roundKey]; exists && len(steps) > 0 {
-		log.Printf("Error: Round %d has already been rolled", roundKey)
-	} else {
-
-		// Check max roll
-		if roundKey < 0 || roundKey >= len(battle.Cases) {
-			// Move to Option Level
-			log.Printf("Error: Round %d has already been rolled", roundKey)
-			if configs.Debug {
-				log.Printf("Battle %d steps(%d) are done.", battleID, roundKey)
-			}
-
-			// Go to check Options
-			optionActions(battleID)
-			return
-		}
-
-		battle.Status = fmt.Sprintf("Roll %d", roundKey+1)
-		battle.StatusCode = 1
-
-		if battle.Summery.Steps == nil {
-			battle.Summery.Steps = make(map[int][]models.StepResult)
-		}
-		if battle.Summery.Prizes == nil {
-			battle.Summery.Prizes = make(map[string]float64)
-		}
-
-		nonce := ((roundKey + 7) * 2) + roundKey
-		caseID := battle.Cases[roundKey]
-		caseData := CasesImpacted[caseID]
-
-		var (
-			rollWinner string
-			lastPrize  float64
-		)
-		lastPrize = 0
-		for slot, _ := range battle.Slots {
-			clientSeed, ok := battle.PFair["clientSeed"].(map[string]interface{})[slot].(string)
-			if !ok {
-				log.Println("No clientSeed for slot:", slot)
-				continue
-			}
-			nonce++
-
-			item := provablyfair.PickItem(
-				caseData,
-				battle.PFair["serverSeed"].(string),
-				clientSeed,
-				nonce,
-			)
-
-			if configs.Debug {
-				log.Println("Roll "+strconv.Itoa(roundKey), slot, caseID, nonce, item["price"])
-			}
-
-			if item == nil {
-				log.Println("No item picked for slot:", slot)
-				continue
-			}
-
-			priceStr, _ := item["price"].(string)
-			price, _ := strconv.ParseFloat(priceStr, 64)
-
-			step := models.StepResult{
-				Slot:   slot,
-				ItemID: int(item["id"].(float64)),
-				Price:  price,
-			}
-
-			battle.Summery.Steps[roundKey] = append(battle.Summery.Steps[roundKey], step)
-			battle.Summery.Prizes[slot] += step.Price
-			AddTeamPrizes(battle, slot, step.Price)
-
-			if lastPrize < step.Price {
-				rollWinner = slot
-			}
-			lastPrize = step.Price
-		}
-		AddTeamRolWin(battle, rollWinner)
-
-		AddLog(battle, fmt.Sprintf("Roll %d", roundKey+1), 0)
-		UpdateBattle(battle)
-	}
-
-	Roll(battleID, roundKey+1)
-}
-
-func GenerateShortBattleHash(battleID string) string {
-	secretKey := []byte(os.Getenv("HMAC_SECRET"))
-	timestamp := time.Now().Unix()
-	message := fmt.Sprintf("%s:%d", battleID, timestamp)
-	h := hmac.New(sha256.New, secretKey)
-	h.Write([]byte(message))
-	fullHash := h.Sum(nil)
-	shortHash := hex.EncodeToString(fullHash[:8])
-	return shortHash
-}
-
-func RoundToTwoDigits(val float64) float64 {
-	return math.Round(val*100) / 100
-}
-
-func optionActions(battleID int64) {
-	battle, ok := GetBattle(battleID)
-	if !ok {
-		log.Println("Battle not found:", battleID)
-		return
-	}
-
-	// Winner Team
-	winner := battle.Teams[0]
-
-	if len(battle.Options) == 0 {
-		// No Options
-
-		for _, t := range battle.Teams {
-			if t.TotalPrizes > winner.TotalPrizes {
-				winner = t
-			}
-		}
-
-	} else {
-		// Handel Options
-
-		if inArray(battle.Options, "equality") {
-
-			for _, t := range battle.Teams {
-				if t.TotalPrizes > winner.TotalPrizes {
-					winner = t
-				}
-			}
-			keys := make([]string, 0, len(battle.Summery.Prizes))
-			for k := range battle.Summery.Prizes {
-				keys = append(keys, k)
-			}
-			winner.Slots = keys
-
-		} else {
-			if inArray(battle.Options, "madness") {
-				for _, t := range battle.Teams {
-					if t.TotalPrizes < winner.TotalPrizes {
-						winner = t
-					}
-				}
-			}
-
-			if inArray(battle.Options, "jackpot") && !inArray(battle.Options, "madness") {
-
-				for _, t := range battle.Teams {
-					if t.RolWin > winner.RolWin {
-						winner = t
-					}
-				}
-
-			}
-
-			if inArray(battle.Options, "jackpot") && inArray(battle.Options, "madness") {
-
-				for _, t := range battle.Teams {
-					if t.RolWin < winner.RolWin {
-						winner = t
-					}
-				}
-
-			}
-		}
-
-	}
-
-	// Get Total Prize
-	var total float64
-	for _, v := range battle.Summery.Prizes {
-		total += v
-	}
-	battle.Summery.Winners = winner
-	battle.Summery.Winners.TotalPrizes = RoundToTwoDigits(total)
-	battle.Summery.Winners.SlotPrizes = RoundToTwoDigits(total / float64(len(battle.Summery.Winners.Slots)))
-
-	AddLog(battle, "Handel Options", 0)
-	UpdateBattle(battle)
-
-	// Emit | heartbeat
-	events.Emit("all", "heartbeat", BuildBattleIndex(BattleIndex))
-
-	// Wait for animation
-	time.Sleep(30 * time.Second)
-
-	archive(battle.ID)
-
-	return
-}
-
-func archive(battleID int) (models.HandlerOK, models.HandlerError) {
-	var (
-		errR models.HandlerError
-		resR models.HandlerOK
-	)
-
-	battle, ok := GetBattle(int64(battleID))
-	if !ok {
-		log.Println("Battle not found:", battleID)
-		return resR, models.HandlerError{}
-	}
-
-	for _, v := range battle.Summery.Winners.Slots {
-		userID := battle.Slots[v].ID
-
-		// Skip Empty / Bot
-		if battle.Slots[v].Type != "Player" {
-			continue
-		}
-
-		// Get Users
-		resp, err := utils.GetUser(userID)
-		if err != nil {
-			return resR, models.HandlerError{}
-		}
-		errCode, status, errType := utils.SafeExtractErrorStatus(resp)
-		if status != 1 {
-			errR.Type = errType
-			errR.Code = errCode
-			if resp["data"] != nil {
-				errR.Data = resp["data"]
-			}
-			return resR, errR
-		}
-
-		// Add Transaction
-		Transaction, err := utils.AddTransaction(
-			userID,
-			"game_win",
-			strconv.Itoa(battleID),
-			battle.Summery.Winners.SlotPrizes,
-			"",
-			"Case Battle",
-		)
-		if err != nil {
-			return resR, models.HandlerError{}
-		}
-		errCode, status, errType = utils.SafeExtractErrorStatus(Transaction)
-		if status != 1 {
-			errR.Type = errType
-			errR.Code = errCode
-			if resp["data"] != nil {
-				errR.Data = resp["data"]
-			}
-			return resR, errR
-		}
-
-		UpdateBattle(battle)
-
-	}
-
-	battle.Status = "Archived"
-	battle.StatusCode = -1
-	UpdateBattle(battle)
-
-	// Sanitize and build query
-	query := fmt.Sprintf(
-		`Update g1_battles SET is_live = 0 WHERE id = %d`,
-		battle.ID,
-	)
-
-	// gRPC Call
-	res, err := grpcclient.SendQuery(query)
-	if err != nil || res == nil || res.Status != "ok" {
-		errR.Type = "PROFILE_GRPC_ERROR"
-		errR.Code = 1033
-		if res != nil {
-			errR.Data = res.Error
-		}
-		return resR, errR
-	}
-
-	// Extract gRPC struct
-	dataDB := res.Data.GetFields()
-
-	// DB result rows count
-	exist := dataDB["rows_affected"].GetNumberValue()
-	if exist == 0 {
-		errR.Type = "USER_NOT_FOUND"
-		errR.Code = 1035
-		return resR, errR
-	}
-
-	// Wait for animation
-	time.Sleep(60 * time.Second)
-
-	// Add To Battle Index
-	DeleteBattle(int64(battle.ID))
-
-	// Emit | heartbeat
-	events.Emit("all", "heartbeat", BuildBattleIndex(BattleIndex))
-
-	return resR, models.HandlerError{}
-}
-
+// GetBattleHistory - Handler
 func GetBattleHistory(data map[string]interface{}) (models.HandlerOK, models.HandlerError) {
 	var (
 		errR models.HandlerError
@@ -1208,7 +597,7 @@ func GetBattleHistory(data map[string]interface{}) (models.HandlerOK, models.Han
 	battleVal := fields["battle"]
 	battleStr := battleVal.GetStringValue()
 
-	var battleMap map[string]interface{}
+	var battleMap models.Battle
 
 	if strings.HasPrefix(battleStr, "{") {
 		if err := json.Unmarshal([]byte(battleStr), &battleMap); err != nil {
@@ -1235,15 +624,38 @@ func GetBattleHistory(data map[string]interface{}) (models.HandlerOK, models.Han
 
 	// Success
 	resR.Type = "getBattleHistory"
-	resR.Data = battleMap
+	resR.Data = ClientBattle(&battleMap)
 	return resR, errR
 }
 
+// GetLiveBattles - Handler
+func GetLiveBattles(data map[string]interface{}) (models.HandlerOK, models.HandlerError) {
+	var (
+		errR models.HandlerError
+		resR models.HandlerOK
+	)
+
+	// Success
+	resR.Type = "getLiveBattles"
+	resR.Data = ClientBattleIndex(BattleIndex)
+	return resR, errR
+}
+
+// GetBattleAdmin - Handler
 func GetBattleAdmin(data map[string]interface{}) (models.HandlerOK, models.HandlerError) {
 	var (
 		errR models.HandlerError
 		resR models.HandlerOK
 	)
+
+	// Check Admin Key
+	_, err := utils.ValidateAdminKey(data)
+	if err != nil {
+		errParts := strings.Split(err.Error(), ":")
+		errR.Type = errParts[0]
+		errR.Code, _ = strconv.Atoi(errParts[1])
+		return resR, errR
+	}
 
 	battleID, vErr, ok := validate.RequireInt(data, "battleId")
 	if !ok {
@@ -1329,77 +741,629 @@ func GetBattleAdmin(data map[string]interface{}) (models.HandlerOK, models.Handl
 	return resR, errR
 }
 
-func GetBattleIndex(data map[string]interface{}) (models.HandlerOK, models.HandlerError) {
+// GetLiveBattlesAdmin - Handler
+func GetLiveBattlesAdmin(data map[string]interface{}) (models.HandlerOK, models.HandlerError) {
 	var (
 		errR models.HandlerError
 		resR models.HandlerOK
 	)
+
+	// Check Admin Key
+	_, err := utils.ValidateAdminKey(data)
+	if err != nil {
+		errParts := strings.Split(err.Error(), ":")
+		errR.Type = errParts[0]
+		errR.Code, _ = strconv.Atoi(errParts[1])
+		return resR, errR
+	}
 
 	// Success
-	resR.Type = "getBattleIndex"
-	resR.Data = BuildBattleIndex(BattleIndex)
+	resR.Type = "getLiveBattles"
+	resR.Data = BattleIndex
 	return resR, errR
 }
 
-func RestBattleAdmin(data map[string]interface{}) (models.HandlerOK, models.HandlerError) {
-	var (
-		errR models.HandlerError
-		resR models.HandlerOK
-	)
-
-	// Success - Return Profile
-	resR.Type = "ping"
-	resR.Data = time.Now().UTC().Format(time.RFC3339)
-	return resR, errR
+// GetBattle - Safe Battle Actions
+func GetBattle(id int64) (*models.Battle, bool) {
+	battleIndexMu.RLock()
+	defer battleIndexMu.RUnlock()
+	b, ok := BattleIndex[id]
+	return b, ok
 }
 
-func Test(data map[string]interface{}) (models.HandlerOK, models.HandlerError) {
+// SetBattle - Safe Battle Actions
+func SetBattle(id int64, b *models.Battle) {
+	battleIndexMu.Lock()
+	defer battleIndexMu.Unlock()
+	BattleIndex[id] = b
+}
+
+// DeleteBattle - Safe Battle Actions
+func DeleteBattle(id int64) {
+	AddLog(BattleIndex[id], "archive", int64(0))
+
+	battleIndexMu.Lock()
+	defer battleIndexMu.Unlock()
+	delete(BattleIndex, id)
+}
+
+// SetSlotTeam - Battle Helper
+func SetSlotTeam(b *models.Battle, slotKey string, team int) {
+	if slot, ok := b.Slots[slotKey]; ok {
+		slot.Team = team
+		b.Slots[slotKey] = slot
+	}
+}
+
+// AddTeamPrizes - Battle Helper
+func AddTeamPrizes(b *models.Battle, slotKey string, Prizes float64) {
+	team := b.Slots[slotKey].Team
+	b.Teams[team].TotalPrizes += Prizes
+}
+
+// AddTeamRollWin - Battle Helper
+func AddTeamRollWin(b *models.Battle, slotKey string) {
+	team := b.Slots[slotKey].Team
+	b.Teams[team].RolWin++
+}
+
+// castStringSlice - Battle Helper
+func castStringSlice(val interface{}) []string {
+	out := []string{}
+	if arr, ok := val.([]interface{}); ok {
+		for _, v := range arr {
+			out = append(out, fmt.Sprintf("%v", v))
+		}
+	}
+	return out
+}
+
+// castCases - Battle Helper
+func castCases(val interface{}) []map[string]int {
+	out := []map[string]int{}
+	if arr, ok := val.([]interface{}); ok {
+		for _, v := range arr {
+			if m, ok := v.(map[interface{}]interface{}); ok { // بسته به decode WS
+				newMap := map[string]int{}
+				for key, value := range m {
+					k := fmt.Sprintf("%v", key)
+					if n, ok := value.(float64); ok {
+						newMap[k] = int(n)
+					}
+				}
+				out = append(out, newMap)
+			} else if m, ok := v.(map[string]interface{}); ok {
+				newMap := map[string]int{}
+				for key, value := range m {
+					if n, ok := value.(float64); ok {
+						newMap[key] = int(n)
+					}
+				}
+				out = append(out, newMap)
+			}
+		}
+	}
+	return out
+}
+
+// UpdateBattle - Battle Helper
+func UpdateBattle(battle *models.Battle) (bool, models.HandlerError) {
 	var (
 		errR models.HandlerError
-		resR models.HandlerOK
+		bID  int = battle.ID
+	)
+	battle.UpdatedAt = time.Now()
+	battleJSON, err := json.Marshal(battle)
+	if err != nil {
+		errR.Type = "json.Marshal(battle)"
+		errR.Code = 1027
+		return false, errR
+	}
+	// Sanitize and build query
+	query := fmt.Sprintf(
+		`Update g1_battles SET battle = '%s' WHERE id = %d`,
+		string(battleJSON),
+		bID,
 	)
 
+	// gRPC Call
+	res, err := grpcclient.SendQuery(query)
+	if err != nil || res == nil || res.Status != "ok" {
+		errR.Type = "PROFILE_GRPC_ERROR"
+		errR.Code = 1033
+		if res != nil {
+			errR.Data = res.Error
+		}
+		return false, errR
+	}
+
+	// Extract gRPC struct
+	dataDB := res.Data.GetFields()
+
+	// DB result rows count
+	exist := dataDB["rows_affected"].GetNumberValue()
+	if exist == 0 {
+		errR.Type = "USER_NOT_FOUND"
+		errR.Code = 1035
+		return false, errR
+	}
+
+	// Add To Battle Index
+	SetBattle(int64(battle.ID), battle)
+
+	return true, errR
+}
+
+// ToBattleResponse - Battle Helper
+func ToBattleResponse(b *models.Battle) models.BattleCreated {
+	slots := make(map[string]models.SlotResp)
+	for k, v := range b.Slots {
+		slots[k] = models.SlotResp{
+			ID:          v.ID,
+			DisplayName: v.DisplayName,
+			Type:        v.Type,
+		}
+	}
+	return models.BattleCreated{
+		ID:         b.ID,
+		PlayerType: b.PlayerType,
+		Options:    b.Options,
+		CaseCounts: b.CaseCounts,
+		Cost:       b.Cost,
+		Slots:      slots,
+		Status:     b.Status,
+		Summery:    b.Summery,
+		CreatedAt:  b.CreatedAt,
+		PrivateKey: b.PrivateKey,
+	}
+}
+
+// FillBattleIndex - Battle Helper
+func FillBattleIndex() (bool, models.HandlerError) {
+	var (
+		errR      models.HandlerError
+		dbBattles *structpb.ListValue
+	)
+
+	log.Println("Fill BattleIndex..")
+
+	// Sanitize and build query
+	query := `SELECT battle FROM g1_battles WHERE is_live=1`
+
+	// gRPC Call
+	res, err := grpcclient.SendQuery(query)
+	if err != nil || res == nil || res.Status != "ok" {
+		errR.Type = "PROFILE_GRPC_ERROR"
+		errR.Code = 1033
+		if res != nil {
+			errR.Data = res.Error
+		}
+		return false, errR
+	}
+	// Extract gRPC struct
+	dataDB := res.Data.GetFields()
+	// DB result rows count
+	exist := dataDB["count"].GetNumberValue()
+	if exist == 0 {
+		errR.Type = "DB_DATA"
+		errR.Code = 1070
+		return false, errR
+	}
+	// DB result rows get fields
+	dbBattles = dataDB["rows"].GetListValue()
+
+	for idx, row := range dbBattles.Values {
+		structRow := row.GetStructValue()
+		battleJSON := structRow.Fields["battle"].GetStringValue() // JSON string
+
+		var b models.Battle
+		err := json.Unmarshal([]byte(battleJSON), &b)
+		if err != nil {
+			log.Println("Failed to unmarshal battle:", err)
+			continue
+		}
+
+		key := int64(b.ID)
+		if key == 0 {
+			key = int64(idx + 1)
+		}
+
+		BattleIndex[key] = &b
+	}
+
+	return true, errR
+}
+
+// IsPlayerInBattle - Battle Helper
+func IsPlayerInBattle(players []int, userID int) bool {
+	for _, id := range players {
+		if id == userID {
+			return true
+		}
+	}
+	return false
+}
+
+// AddClientSeed - Battle Helper
+func AddClientSeed(battle map[string]interface{}, key string, value interface{}) {
+	cs, ok := battle["clientSeed"].(map[string]interface{})
+	if !ok {
+		cs = make(map[string]interface{})
+		battle["clientSeed"] = cs
+	}
+	cs[key] = value
+}
+
+// AddLog - Battle Helper
+func AddLog(b *models.Battle, action string, userID int64) {
+	b.Logs = append(b.Logs, models.BattleLog{
+		Time:   time.Now().UTC().Format(time.RFC3339),
+		Action: action,
+		UserID: userID,
+	})
+}
+
+// RemoveClientSeed - Battle Helper
+func RemoveClientSeed(battle map[string]interface{}, key string) {
+	cs, ok := battle["clientSeed"].(map[string]interface{})
+	if !ok {
+		return
+	}
+	delete(cs, key)
+}
+
+// ClientBattleIndex - Battle Helper
+func ClientBattleIndex(battles map[int64]*models.Battle) map[int64]models.BattleClient {
+	out := make(map[int64]models.BattleClient)
+	for _, b := range battles {
+		dto := models.BattleClient{
+			ID:             b.ID,
+			PlayerType:     b.PlayerType,
+			Options:        b.Options,
+			Cases:          b.Cases,
+			CasesUi:        b.CasesUi,
+			CaseCounts:     b.CaseCounts,
+			Cost:           b.Cost,
+			Slots:          b.Slots,
+			Status:         b.Status,
+			StatusCode:     b.StatusCode,
+			Summery:        b.Summery,
+			CreatedAt:      b.CreatedAt,
+			UpdatedAt:      b.UpdatedAt,
+			ServerSeedHash: b.PFair["serverSeedHash"].(string),
+		}
+		out[int64(b.ID)] = dto
+	}
+	return out
+}
+
+// ClientBattle - Battle Helper
+func ClientBattle(b *models.Battle) models.BattleClient {
+	return models.BattleClient{
+		ID:             b.ID,
+		PlayerType:     b.PlayerType,
+		Options:        b.Options,
+		Cases:          b.Cases,
+		CasesUi:        b.CasesUi,
+		CaseCounts:     b.CaseCounts,
+		Cost:           b.Cost,
+		Slots:          b.Slots,
+		Status:         b.Status,
+		StatusCode:     b.StatusCode,
+		Summery:        b.Summery,
+		CreatedAt:      b.CreatedAt,
+		UpdatedAt:      b.UpdatedAt,
+		ServerSeedHash: b.PFair["serverSeedHash"].(string),
+	}
+}
+
+// expandCases - Battle Helper
+func expandCases(input []map[string]int) []int {
+	var out []int
+	for _, m := range input {
+		for k, count := range m {
+			caseID, _ := strconv.Atoi(k)
+			for i := 0; i < count; i++ {
+				out = append(out, caseID)
+			}
+		}
+	}
+	return out
+}
+
+// GenerateShortBattleHash - Battle Helper
+func GenerateShortBattleHash(battleID string) string {
+	secretKey := []byte(os.Getenv("HMAC_SECRET"))
+	timestamp := time.Now().Unix()
+	message := fmt.Sprintf("%s:%d", battleID, timestamp)
+	h := hmac.New(sha256.New, secretKey)
+	h.Write([]byte(message))
+	fullHash := h.Sum(nil)
+	shortHash := hex.EncodeToString(fullHash[:8])
+	return shortHash
+}
+
+// Roll - Battle Helper
+func Roll(battleID int64, roundKey int) {
+
+	if DbBots == nil || len(DbBots.Values) == 0 {
+		FillBots()
+	}
 	if len(CasesImpacted) == 0 {
 		FillCaseImpact()
 	}
 
-	// Check Token
-	userJWT, vErr, ok := validate.RequireString(data, "token", false)
+	battle, ok := GetBattle(battleID)
 	if !ok {
-		return resR, vErr
+		log.Println("Battle not found:", battleID)
+		return
 	}
-	resp, err := utils.VerifyJWT(userJWT)
-	if err != nil {
+
+	// Check if roll has already done
+	if steps, exists := battle.Summery.Steps[roundKey]; exists && len(steps) > 0 {
+		if configs.Debug {
+			log.Printf("Info: Round %d has already been rolled", roundKey)
+		}
+	} else {
+
+		// Last Roll
+		if roundKey >= len(battle.Cases) {
+			// Move to Option Level
+			if configs.Debug {
+				log.Printf("Battle %d steps(%d) are done.", battleID, roundKey)
+			}
+			// Go to check Options
+			optionActions(battleID)
+			return
+		}
+
+		// Run Roll
+		battle.StatusCode = roundKey + 1
+		battle.Status = fmt.Sprintf("Roll %d", battle.StatusCode)
+		if battle.Summery.Steps == nil {
+			battle.Summery.Steps = make(map[int][]models.StepResult)
+		}
+		if battle.Summery.Prizes == nil {
+			battle.Summery.Prizes = make(map[string]float64)
+		}
+		nonce := ((roundKey + 7) * 2) + roundKey
+		caseID := battle.Cases[roundKey]
+		caseData := CasesImpacted[caseID]
+		var (
+			rollWinner string
+			lastPrize  float64
+		)
+		lastPrize = 0
+		for slot, _ := range battle.Slots {
+			clientSeed, ok := battle.PFair["clientSeed"].(map[string]interface{})[slot].(string)
+			if !ok {
+				log.Println("No clientSeed for slot:", slot)
+				continue
+			}
+			nonce++
+			nonce++
+			item := provablyfair.PickItem(
+				caseData,
+				battle.PFair["serverSeed"].(string),
+				clientSeed,
+				nonce,
+			)
+			if configs.Debug {
+				log.Println("Roll "+strconv.Itoa(roundKey), slot, caseID, nonce, item["price"])
+			}
+
+			if item == nil {
+				log.Println("No item picked for slot:", slot)
+				continue
+			}
+
+			priceStr, _ := item["price"].(string)
+			price, _ := strconv.ParseFloat(priceStr, 64)
+
+			step := models.StepResult{
+				Slot:   slot,
+				ItemID: int(item["id"].(float64)),
+				Price:  price,
+			}
+
+			battle.Summery.Steps[roundKey] = append(battle.Summery.Steps[roundKey], step)
+			battle.Summery.Prizes[slot] += step.Price
+			AddTeamPrizes(battle, slot, step.Price)
+
+			if lastPrize < step.Price {
+				rollWinner = slot
+			}
+			lastPrize = step.Price
+		}
+		AddTeamRollWin(battle, rollWinner)
+		AddLog(battle, fmt.Sprintf("Roll %d", roundKey+1), 0)
+		UpdateBattle(battle)
+	}
+	Roll(battleID, roundKey+1)
+}
+
+// optionActions - Battle Helper
+func optionActions(battleID int64) {
+	battle, ok := GetBattle(battleID)
+	if !ok {
+		log.Println("Battle not found:", battleID)
+		return
+	}
+
+	// Winner Team
+	winner := battle.Teams[0]
+	if len(battle.Options) == 0 {
+		// No Options
+		for _, t := range battle.Teams {
+			if t.TotalPrizes > winner.TotalPrizes {
+				winner = t
+			}
+		}
+	} else {
+		// Handel Options
+		if utils.InArray(battle.Options, "equality") {
+			for _, t := range battle.Teams {
+				if t.TotalPrizes > winner.TotalPrizes {
+					winner = t
+				}
+			}
+			keys := make([]string, 0, len(battle.Summery.Prizes))
+			for k := range battle.Summery.Prizes {
+				keys = append(keys, k)
+			}
+			winner.Slots = keys
+		} else {
+			if utils.InArray(battle.Options, "madness") {
+				for _, t := range battle.Teams {
+					if t.TotalPrizes < winner.TotalPrizes {
+						winner = t
+					}
+				}
+			}
+			if utils.InArray(battle.Options, "jackpot") && !utils.InArray(battle.Options, "madness") {
+				for _, t := range battle.Teams {
+					if t.RolWin > winner.RolWin {
+						winner = t
+					}
+				}
+
+			}
+			if utils.InArray(battle.Options, "jackpot") && utils.InArray(battle.Options, "madness") {
+				for _, t := range battle.Teams {
+					if t.RolWin < winner.RolWin {
+						winner = t
+					}
+				}
+			}
+		}
+	}
+
+	// Get Total Prize
+	var total float64
+	for _, v := range battle.Summery.Prizes {
+		total += v
+	}
+	battle.Summery.Winners = winner
+	battle.Summery.Winners.TotalPrizes = utils.RoundToTwoDigits(total)
+	battle.Summery.Winners.SlotPrizes = utils.RoundToTwoDigits(total / float64(len(battle.Summery.Winners.Slots)))
+	AddLog(battle, "Handel Options", 0)
+	UpdateBattle(battle)
+
+	// Emit | heartbeat
+	events.Emit("all", "heartbeat", ClientBattleIndex(BattleIndex))
+
+	// Wait for animations
+	time.Sleep(time.Duration(6*battle.CaseCounts) * time.Second)
+
+	// Archive battle
+	archive(battle.ID)
+	return
+}
+
+// archive - Battle Helper
+func archive(battleID int) (models.HandlerOK, models.HandlerError) {
+	var (
+		errR models.HandlerError
+		resR models.HandlerOK
+	)
+
+	battle, ok := GetBattle(int64(battleID))
+	if !ok {
+		log.Println("Battle not found:", battleID)
 		return resR, models.HandlerError{}
 	}
-	errCode, status, errType := utils.SafeExtractErrorStatus(resp)
-	if status != 1 {
-		errR.Type = errType
-		errR.Code = errCode
-		if resp["data"] != nil {
-			errR.Data = resp["data"]
+
+	for _, v := range battle.Summery.Winners.Slots {
+		userID := battle.Slots[v].ID
+
+		// Skip Empty / Bot
+		if battle.Slots[v].Type != "Player" {
+			continue
+		}
+
+		// Get Users
+		resp, err := utils.GetUser(userID)
+		if err != nil {
+			return resR, models.HandlerError{}
+		}
+		errCode, status, errType := utils.SafeExtractErrorStatus(resp)
+		if status != 1 {
+			errR.Type = errType
+			errR.Code = errCode
+			if resp["data"] != nil {
+				errR.Data = resp["data"]
+			}
+			return resR, errR
+		}
+
+		// Add Transaction
+		Transaction, err := utils.AddTransaction(
+			userID,
+			"game_win",
+			strconv.Itoa(battleID),
+			battle.Summery.Winners.SlotPrizes,
+			"",
+			"Case Battle",
+		)
+		if err != nil {
+			return resR, models.HandlerError{}
+		}
+		errCode, status, errType = utils.SafeExtractErrorStatus(Transaction)
+		if status != 1 {
+			errR.Type = errType
+			errR.Code = errCode
+			if resp["data"] != nil {
+				errR.Data = resp["data"]
+			}
+			return resR, errR
+		}
+
+		UpdateBattle(battle)
+	}
+
+	battle.Status = "Archived"
+	battle.StatusCode = -1
+	UpdateBattle(battle)
+
+	// Sanitize and build query
+	query := fmt.Sprintf(
+		`Update g1_battles SET is_live = 0 WHERE id = %d`,
+		battle.ID,
+	)
+
+	// gRPC Call
+	res, err := grpcclient.SendQuery(query)
+	if err != nil || res == nil || res.Status != "ok" {
+		errR.Type = "PROFILE_GRPC_ERROR"
+		errR.Code = 1033
+		if res != nil {
+			errR.Data = res.Error
 		}
 		return resR, errR
 	}
 
-	// Get Battle
-	battleId, vErr, ok := validate.RequireInt(data, "battleId")
-	if !ok {
-		return resR, vErr
-	}
-	battle, ok := GetBattle(battleId)
-	if !ok {
-		errR.Type = "NOT_FOUND"
-		errR.Code = 5003
+	// Extract gRPC struct
+	dataDB := res.Data.GetFields()
+
+	// DB result rows count
+	exist := dataDB["rows_affected"].GetNumberValue()
+	if exist == 0 {
+		errR.Type = "USER_NOT_FOUND"
+		errR.Code = 1035
 		return resR, errR
 	}
 
-	events.Emit("all", "heartbeat", battle)
+	// Emit | heartbeat
+	events.Emit("all", "heartbeat", ClientBattleIndex(BattleIndex))
 
-	Roll(battleId, 0)
+	// Wait for animation
+	time.Sleep(30 * time.Second)
 
-	// Success
-	resR.Type = "test"
-	resR.Data = ""
-	return resR, errR
+	// Add To Battle Index
+	DeleteBattle(int64(battle.ID))
+
+	// Emit | heartbeat
+	events.Emit("all", "heartbeat", ClientBattleIndex(BattleIndex))
+
+	return resR, models.HandlerError{}
 }

@@ -5,7 +5,7 @@
 		for {
 			select {
 			case <-ticker.C:
-				ws.EmitToAnyEvent("heartbeat", handlers.BuildBattleIndex(handlers.BattleIndex))
+				ws.EmitToAnyEvent("heartbeat", handlers.ClientBattleIndex(handlers.BattleIndex))
 			}
 		}
 

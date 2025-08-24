@@ -86,7 +86,7 @@ func EmitServer(req map[string]interface{}, resType string, resData interface{})
 		events.Bus <- events.Event{
 			Target: "all",
 			Type:   "heartbeat",
-			Data:   BuildBattleIndex(BattleIndex),
+			Data:   ClientBattleIndex(BattleIndex),
 		}
 	}
 }

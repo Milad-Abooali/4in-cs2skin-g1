@@ -36,10 +36,10 @@ var postRoutes = map[string]func(map[string]interface{}) (models.HandlerOK, mode
 	"updateCases": handlers.UpdateCases,
 
 	// Battles
-	"getBattleIndex":   handlers.GetBattleIndex,
-	"getBattleHistory": handlers.GetBattleHistory,
-	"getBattleAdmin":   handlers.GetBattleAdmin,
-	"restBattleAdmin":  handlers.RestBattleAdmin,
+	"getLiveBattles":      handlers.GetLiveBattles,
+	"getBattleHistory":    handlers.GetBattleHistory,
+	"getBattleAdmin":      handlers.GetBattleAdmin,
+	"getLiveBattlesAdmin": handlers.GetLiveBattlesAdmin,
 
 	// User Actions
 	"newBattle": handlers.NewBattle,

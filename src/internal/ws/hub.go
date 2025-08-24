@@ -183,11 +183,18 @@ func EmitToGuestsEvent(eventType string, data any) {
 func EmitServer(req map[string]interface{}, resType string, resData interface{}) {
 
 	switch resType {
-	case "test", "getBots", "getCases", "getBattleHistory":
+	case "test",
+		"getBots",
+		"updateBots",
+		"getCases",
+		"updateCases",
+		"getLiveBattles",
+		"getBattleHistory",
+		"getBattleAdmin":
 		// No Emit
 
 	default:
-		EmitToAnyEvent("heartbeat", handlers.BuildBattleIndex(handlers.BattleIndex))
+		EmitToAnyEvent("heartbeat", handlers.ClientBattleIndex(handlers.BattleIndex))
 	}
 
 }

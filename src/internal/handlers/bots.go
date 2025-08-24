@@ -16,6 +16,7 @@ var (
 	DbBots *structpb.ListValue
 )
 
+// GetBots - Handler
 func GetBots(data map[string]interface{}) (models.HandlerOK, models.HandlerError) {
 	var (
 		errR models.HandlerError
@@ -32,6 +33,7 @@ func GetBots(data map[string]interface{}) (models.HandlerOK, models.HandlerError
 	return resR, errR
 }
 
+// UpdateBots - Handler
 func UpdateBots(data map[string]interface{}) (models.HandlerOK, models.HandlerError) {
 	var (
 		errR models.HandlerError
@@ -46,6 +48,7 @@ func UpdateBots(data map[string]interface{}) (models.HandlerOK, models.HandlerEr
 	return resR, errR
 }
 
+// AddBot - Handler
 func AddBot(data map[string]interface{}) (models.HandlerOK, models.HandlerError) {
 	var (
 		errR models.HandlerError
@@ -131,7 +134,7 @@ func AddBot(data map[string]interface{}) (models.HandlerOK, models.HandlerError)
 		botId = int(bot.GetStructValue().Fields["id"].GetNumberValue())
 	}
 	botName := bot.GetStructValue().Fields["name"].GetStringValue()
-	clientSeed := MD5UserID(botId)
+	clientSeed := utils.MD5UserID(botId)
 
 	// Join Battle
 	team := battle.Slots[slotK].Team
@@ -181,6 +184,7 @@ func AddBot(data map[string]interface{}) (models.HandlerOK, models.HandlerError)
 	return resR, errR
 }
 
+// ClearSlot - Handler
 func ClearSlot(data map[string]interface{}) (models.HandlerOK, models.HandlerError) {
 	var (
 		errR models.HandlerError
@@ -292,6 +296,7 @@ func ClearSlot(data map[string]interface{}) (models.HandlerOK, models.HandlerErr
 	return resR, errR
 }
 
+// FillBots - Bot Helper
 func FillBots() (*structpb.ListValue, models.HandlerError) {
 	log.Println("Fill DbBots...")
 	var (
@@ -324,6 +329,7 @@ func FillBots() (*structpb.ListValue, models.HandlerError) {
 	return DbBots, errR
 }
 
+// FillBots - Bot Helper
 func randomBot(DbBots *structpb.ListValue) *structpb.Value {
 	if DbBots == nil || len(DbBots.Values) == 0 {
 		return nil

@@ -54,8 +54,8 @@ var wsRoutes = map[string]func(*websocket.Conn, map[string]interface{}, int64){
 	},
 
 	// Battles
-	"getBattleIndex": func(c *websocket.Conn, d map[string]interface{}, reqId int64) {
-		dispatch(c, reqId, handlers.GetBattleIndex, d)
+	"getLiveBattles": func(c *websocket.Conn, d map[string]interface{}, reqId int64) {
+		dispatch(c, reqId, handlers.GetLiveBattles, d)
 	},
 	"getBattleHistory": func(c *websocket.Conn, d map[string]interface{}, reqId int64) {
 		dispatch(c, reqId, handlers.GetBattleHistory, d)
@@ -63,8 +63,8 @@ var wsRoutes = map[string]func(*websocket.Conn, map[string]interface{}, int64){
 	"getBattleAdmin": func(c *websocket.Conn, d map[string]interface{}, reqId int64) {
 		dispatch(c, reqId, handlers.GetBattleAdmin, d)
 	},
-	"restBattleAdmin": func(c *websocket.Conn, d map[string]interface{}, reqId int64) {
-		dispatch(c, reqId, handlers.RestBattleAdmin, d)
+	"getLiveBattlesAdmin": func(c *websocket.Conn, d map[string]interface{}, reqId int64) {
+		dispatch(c, reqId, handlers.GetLiveBattlesAdmin, d)
 	},
 
 	// User Actions
@@ -114,7 +114,7 @@ func HandleWebSocket(w http.ResponseWriter, r *http.Request) {
 		"apiVersion": configs.Version,
 		"serverTime": time.Now().UTC().Format(time.RFC3339),
 	})
-	EmitToAnyEvent("heartbeat", handlers.BuildBattleIndex(handlers.BattleIndex))
+	EmitToAnyEvent("heartbeat", handlers.ClientBattleIndex(handlers.BattleIndex))
 
 	// Fill BattleIndex From DB
 	if len(handlers.BattleIndex) == 0 {
