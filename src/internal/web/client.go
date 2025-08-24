@@ -26,6 +26,26 @@ func dispatchWeb(w http.ResponseWriter, fn func(map[string]interface{}) (models.
 var postRoutes = map[string]func(map[string]interface{}) (models.HandlerOK, models.HandlerError){
 	// Ping
 	"ping": handlers.Ping,
+
+	// Bots
+	"getBots":    handlers.GetBots,
+	"updateBots": handlers.UpdateBots,
+
+	// Cases
+	"getCases":    handlers.GetCases,
+	"updateCases": handlers.UpdateCases,
+
+	// Battles
+	"getBattleIndex":   handlers.GetBattleIndex,
+	"getBattleHistory": handlers.GetBattleHistory,
+	"getBattleAdmin":   handlers.GetBattleAdmin,
+	"restBattleAdmin":  handlers.RestBattleAdmin,
+
+	// User Actions
+	"newBattle": handlers.NewBattle,
+	"addBot":    handlers.AddBot,
+	"clearSlot": handlers.ClearSlot,
+	"join":      handlers.Join,
 }
 
 func HandleHTTP(w http.ResponseWriter, r *http.Request) {

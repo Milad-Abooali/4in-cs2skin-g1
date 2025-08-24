@@ -30,6 +30,7 @@ var (
 	battleIndexMu  sync.RWMutex
 )
 
+// GetBattle Safe Battle Actions
 func GetBattle(id int64) (*models.Battle, bool) {
 	battleIndexMu.RLock()
 	defer battleIndexMu.RUnlock()
@@ -37,12 +38,14 @@ func GetBattle(id int64) (*models.Battle, bool) {
 	return b, ok
 }
 
+// SetBattle Safe Battle Actions
 func SetBattle(id int64, b *models.Battle) {
 	battleIndexMu.Lock()
 	defer battleIndexMu.Unlock()
 	BattleIndex[id] = b
 }
 
+// DeleteBattle Safe Battle Actions
 func DeleteBattle(id int64) {
 	AddLog(BattleIndex[id], "archive", int64(0))
 
@@ -51,6 +54,7 @@ func DeleteBattle(id int64) {
 	delete(BattleIndex, id)
 }
 
+// NewBattle - Handler
 func NewBattle(data map[string]interface{}) (models.HandlerOK, models.HandlerError) {
 	var (
 		errR models.HandlerError
@@ -385,6 +389,7 @@ func NewBattle(data map[string]interface{}) (models.HandlerOK, models.HandlerErr
 	return resR, errR
 }
 
+// inArray - Helper
 func inArray[T comparable](arr []T, item T) bool {
 	for _, v := range arr {
 		if v == item {
@@ -851,9 +856,6 @@ func Roll(battleID int64, roundKey int) {
 		log.Printf("Error: Round %d has already been rolled", roundKey)
 	} else {
 
-		// Wait for animation
-		time.Sleep(1 * time.Second)
-
 		// Check max roll
 		if roundKey < 0 || roundKey >= len(battle.Cases) {
 			// Move to Option Level
@@ -861,12 +863,6 @@ func Roll(battleID int64, roundKey int) {
 			if configs.Debug {
 				log.Printf("Battle %d steps(%d) are done.", battleID, roundKey)
 			}
-
-			// Emit | heartbeat
-			events.Emit("all", "heartbeat", BuildBattleIndex(BattleIndex))
-
-			// Wait for animation
-			time.Sleep(30 * time.Second)
 
 			// Go to check Options
 			optionActions(battleID)
@@ -1041,7 +1037,7 @@ func optionActions(battleID int64) {
 	events.Emit("all", "heartbeat", BuildBattleIndex(BattleIndex))
 
 	// Wait for animation
-	time.Sleep(1 * time.Second)
+	time.Sleep(30 * time.Second)
 
 	archive(battle.ID)
 
@@ -1153,57 +1149,6 @@ func archive(battleID int) (models.HandlerOK, models.HandlerError) {
 	return resR, models.HandlerError{}
 }
 
-func Test(data map[string]interface{}) (models.HandlerOK, models.HandlerError) {
-	var (
-		errR models.HandlerError
-		resR models.HandlerOK
-	)
-
-	if len(CasesImpacted) == 0 {
-		FillCaseImpact()
-	}
-
-	// Check Token
-	userJWT, vErr, ok := validate.RequireString(data, "token", false)
-	if !ok {
-		return resR, vErr
-	}
-	resp, err := utils.VerifyJWT(userJWT)
-	if err != nil {
-		return resR, models.HandlerError{}
-	}
-	errCode, status, errType := utils.SafeExtractErrorStatus(resp)
-	if status != 1 {
-		errR.Type = errType
-		errR.Code = errCode
-		if resp["data"] != nil {
-			errR.Data = resp["data"]
-		}
-		return resR, errR
-	}
-
-	// Get Battle
-	battleId, vErr, ok := validate.RequireInt(data, "battleId")
-	if !ok {
-		return resR, vErr
-	}
-	battle, ok := GetBattle(battleId)
-	if !ok {
-		errR.Type = "NOT_FOUND"
-		errR.Code = 5003
-		return resR, errR
-	}
-
-	events.Emit("all", "heartbeat", battle)
-
-	Roll(battleId, 0)
-
-	// Success
-	resR.Type = "test"
-	resR.Data = ""
-	return resR, errR
-}
-
 func GetBattleHistory(data map[string]interface{}) (models.HandlerOK, models.HandlerError) {
 	var (
 		errR models.HandlerError
@@ -1291,5 +1236,170 @@ func GetBattleHistory(data map[string]interface{}) (models.HandlerOK, models.Han
 	// Success
 	resR.Type = "getBattleHistory"
 	resR.Data = battleMap
+	return resR, errR
+}
+
+func GetBattleAdmin(data map[string]interface{}) (models.HandlerOK, models.HandlerError) {
+	var (
+		errR models.HandlerError
+		resR models.HandlerOK
+	)
+
+	battleID, vErr, ok := validate.RequireInt(data, "battleId")
+	if !ok {
+		return resR, vErr
+	}
+
+	// Sanitize and build query
+	query := fmt.Sprintf(
+		`SELECT battle FROM g1_battles WHERE id = %d`,
+		battleID,
+	)
+
+	// gRPC Call
+	res, err := grpcclient.SendQuery(query)
+	if err != nil || res == nil || res.Status != "ok" {
+		errR.Type = "PROFILE_GRPC_ERROR"
+		errR.Code = 1033
+		if res != nil {
+			errR.Data = res.Error
+		}
+		return resR, errR
+	}
+
+	// Extract gRPC struct
+	dataDB := res.Data.GetFields()
+
+	// DB result rows count
+	exist := dataDB["count"].GetNumberValue()
+	if exist == 0 {
+		errR.Type = "Battle_NOT_FOUND"
+		errR.Code = 1035
+		return resR, errR
+	}
+
+	// Get rows
+	rows := dataDB["rows"].GetListValue().Values
+	if len(rows) == 0 {
+		errR.Type = "Battle_NOT_FOUND"
+		errR.Code = 1035
+		return resR, errR
+	}
+
+	row := rows[0].GetStructValue()
+	if row == nil {
+		errR.Type = "BATTLE_ROW_EMPTY"
+		errR.Code = 1038
+		return resR, errR
+	}
+
+	fields := row.GetFields()
+
+	battleVal := fields["battle"]
+	battleStr := battleVal.GetStringValue()
+
+	var battleMap map[string]interface{}
+
+	if strings.HasPrefix(battleStr, "{") {
+		if err := json.Unmarshal([]byte(battleStr), &battleMap); err != nil {
+			errR.Type = "BATTLE_JSON_ERROR"
+			errR.Code = 1036
+			return resR, errR
+		}
+	} else {
+		unquoted, err := strconv.Unquote(battleStr)
+		if err != nil {
+			errR.Type = "BATTLE_JSON_DECODE_ERROR"
+			errR.Code = 1037
+			return resR, errR
+		}
+
+		if err := json.Unmarshal([]byte(unquoted), &battleMap); err != nil {
+			errR.Type = "BATTLE_JSON_ERROR"
+			errR.Code = 1036
+			return resR, errR
+		}
+	}
+
+	// @todo - remove some items
+
+	// Success
+	resR.Type = "getBattleAdmin"
+	resR.Data = battleMap
+	return resR, errR
+}
+
+func GetBattleIndex(data map[string]interface{}) (models.HandlerOK, models.HandlerError) {
+	var (
+		errR models.HandlerError
+		resR models.HandlerOK
+	)
+
+	// Success
+	resR.Type = "getBattleIndex"
+	resR.Data = BuildBattleIndex(BattleIndex)
+	return resR, errR
+}
+
+func RestBattleAdmin(data map[string]interface{}) (models.HandlerOK, models.HandlerError) {
+	var (
+		errR models.HandlerError
+		resR models.HandlerOK
+	)
+
+	// Success - Return Profile
+	resR.Type = "ping"
+	resR.Data = time.Now().UTC().Format(time.RFC3339)
+	return resR, errR
+}
+
+func Test(data map[string]interface{}) (models.HandlerOK, models.HandlerError) {
+	var (
+		errR models.HandlerError
+		resR models.HandlerOK
+	)
+
+	if len(CasesImpacted) == 0 {
+		FillCaseImpact()
+	}
+
+	// Check Token
+	userJWT, vErr, ok := validate.RequireString(data, "token", false)
+	if !ok {
+		return resR, vErr
+	}
+	resp, err := utils.VerifyJWT(userJWT)
+	if err != nil {
+		return resR, models.HandlerError{}
+	}
+	errCode, status, errType := utils.SafeExtractErrorStatus(resp)
+	if status != 1 {
+		errR.Type = errType
+		errR.Code = errCode
+		if resp["data"] != nil {
+			errR.Data = resp["data"]
+		}
+		return resR, errR
+	}
+
+	// Get Battle
+	battleId, vErr, ok := validate.RequireInt(data, "battleId")
+	if !ok {
+		return resR, vErr
+	}
+	battle, ok := GetBattle(battleId)
+	if !ok {
+		errR.Type = "NOT_FOUND"
+		errR.Code = 5003
+		return resR, errR
+	}
+
+	events.Emit("all", "heartbeat", battle)
+
+	Roll(battleId, 0)
+
+	// Success
+	resR.Type = "test"
+	resR.Data = ""
 	return resR, errR
 }

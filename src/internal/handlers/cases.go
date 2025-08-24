@@ -30,6 +30,20 @@ func GetCases(data map[string]interface{}) (models.HandlerOK, models.HandlerErro
 	return resR, errR
 }
 
+func UpdateCases(data map[string]interface{}) (models.HandlerOK, models.HandlerError) {
+	var (
+		errR models.HandlerError
+		resR models.HandlerOK
+	)
+
+	FillCaseImpact()
+
+	// Success
+	resR.Type = "updateCases"
+	resR.Data = CasesImpacted
+	return resR, errR
+}
+
 func FillCaseImpact() (map[int]grpcclient.CaseWithItems, models.HandlerError) {
 	log.Println("Fill CasesImpacted...")
 	var (

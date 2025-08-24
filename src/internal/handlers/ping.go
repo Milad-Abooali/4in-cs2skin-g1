@@ -11,7 +11,7 @@ func Ping(data map[string]interface{}) (models.HandlerOK, models.HandlerError) {
 		resR models.HandlerOK
 	)
 
-	// Success - Return Profile
+	// Success
 	resR.Type = "ping"
 	resR.Data = time.Now().UTC().Format(time.RFC3339)
 	return resR, errR

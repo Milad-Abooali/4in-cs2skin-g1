@@ -32,6 +32,20 @@ func GetBots(data map[string]interface{}) (models.HandlerOK, models.HandlerError
 	return resR, errR
 }
 
+func UpdateBots(data map[string]interface{}) (models.HandlerOK, models.HandlerError) {
+	var (
+		errR models.HandlerError
+		resR models.HandlerOK
+	)
+
+	FillBots()
+
+	// Success
+	resR.Type = "getBots"
+	resR.Data = DbBots
+	return resR, errR
+}
+
 func AddBot(data map[string]interface{}) (models.HandlerOK, models.HandlerError) {
 	var (
 		errR models.HandlerError

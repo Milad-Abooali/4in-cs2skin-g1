@@ -37,17 +37,34 @@ var wsRoutes = map[string]func(*websocket.Conn, map[string]interface{}, int64){
 		dispatch(c, reqId, handlers.Test, d)
 	},
 
-	// Store
+	// Bots
 	"getBots": func(c *websocket.Conn, d map[string]interface{}, reqId int64) {
 		dispatch(c, reqId, handlers.GetBots, d)
 	},
+	"updateBots": func(c *websocket.Conn, d map[string]interface{}, reqId int64) {
+		dispatch(c, reqId, handlers.UpdateBots, d)
+	},
+
+	// Cases
 	"getCases": func(c *websocket.Conn, d map[string]interface{}, reqId int64) {
 		dispatch(c, reqId, handlers.GetCases, d)
 	},
+	"updateCases": func(c *websocket.Conn, d map[string]interface{}, reqId int64) {
+		dispatch(c, reqId, handlers.UpdateCases, d)
+	},
 
-	// Database
+	// Battles
+	"getBattleIndex": func(c *websocket.Conn, d map[string]interface{}, reqId int64) {
+		dispatch(c, reqId, handlers.GetBattleIndex, d)
+	},
 	"getBattleHistory": func(c *websocket.Conn, d map[string]interface{}, reqId int64) {
 		dispatch(c, reqId, handlers.GetBattleHistory, d)
+	},
+	"getBattleAdmin": func(c *websocket.Conn, d map[string]interface{}, reqId int64) {
+		dispatch(c, reqId, handlers.GetBattleAdmin, d)
+	},
+	"restBattleAdmin": func(c *websocket.Conn, d map[string]interface{}, reqId int64) {
+		dispatch(c, reqId, handlers.RestBattleAdmin, d)
 	},
 
 	// User Actions
