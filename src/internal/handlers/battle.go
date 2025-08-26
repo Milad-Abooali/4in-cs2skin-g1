@@ -1112,6 +1112,8 @@ func Roll(battleID int64, roundKey int) {
 			if configs.Debug {
 				log.Printf("Battle %d steps(%d) are done.", battleID, roundKey)
 			}
+			UpdateBattle(battle)
+			events.Emit("all", "heartbeat", ClientBattleIndex(BattleIndex))
 			// Go to check Options
 			optionActions(battleID)
 			return
@@ -1177,7 +1179,6 @@ func Roll(battleID int64, roundKey int) {
 		}
 		AddTeamRollWin(battle, rollWinner)
 		AddLog(battle, fmt.Sprintf("Roll %d", roundKey+1), 0)
-		UpdateBattle(battle)
 	}
 	Roll(battleID, roundKey+1)
 }
@@ -1189,6 +1190,9 @@ func optionActions(battleID int64) {
 		log.Println("Battle not found:", battleID)
 		return
 	}
+
+	// Wait for animations
+	time.Sleep(time.Duration(6*battle.CaseCounts) * time.Second)
 
 	// Winner Team
 	winner := battle.Teams[0]
@@ -1251,9 +1255,6 @@ func optionActions(battleID int64) {
 
 	// Emit | heartbeat
 	events.Emit("all", "heartbeat", ClientBattleIndex(BattleIndex))
-
-	// Wait for animations
-	time.Sleep(time.Duration(6*battle.CaseCounts) * time.Second)
 
 	// Archive battle
 	archive(battle.ID)
