@@ -23,9 +23,8 @@ import (
 )
 
 var (
-	BattleIndex    = make(map[int64]*models.Battle)
-	BattleIndexOut = make(map[int64]*models.BattleClient)
-	battleIndexMu  sync.RWMutex
+	BattleIndex   = make(map[int64]*models.Battle)
+	battleIndexMu sync.RWMutex
 )
 
 // NewBattle - Handler
@@ -78,7 +77,8 @@ func NewBattle(data map[string]interface{}) (models.HandlerOK, models.HandlerErr
 		CasesUi:    castCases(data["cases"]),
 		Players:    []int{},
 		CreatedBy:  0,
-		Status:     "initialized",
+		Status:     "Waiting Room",
+		StatusCode: 0,
 		Slots:      make(map[string]models.Slot),
 		PFair:      make(map[string]interface{}),
 		CreatedAt:  time.Now(),
@@ -359,7 +359,7 @@ func NewBattle(data map[string]interface{}) (models.HandlerOK, models.HandlerErr
 
 	// Success
 	resR.Type = "newBattle"
-	resR.Data = ToBattleResponse(BattleIndex[int64(id)])
+	resR.Data = newBattleResponse(BattleIndex[int64(id)])
 	return resR, errR
 }
 
@@ -512,7 +512,8 @@ func Join(data map[string]interface{}) (models.HandlerOK, models.HandlerError) {
 	}
 	if emptyCount == 0 {
 		// Force To Roll
-		battle.Status = "Battle is running ..."
+		battle.Status = "Start Rolling"
+		battle.StatusCode = 0
 		var update, errV = UpdateBattle(battle)
 		if update != true {
 			return resR, errV
@@ -522,6 +523,7 @@ func Join(data map[string]interface{}) (models.HandlerOK, models.HandlerError) {
 		}(battle.ID)
 	} else {
 		battle.Status = fmt.Sprintf(`Waiting for %d users`, emptyCount)
+		battle.StatusCode = 0
 		var update, errV = UpdateBattle(battle)
 		if update != true {
 			return resR, errV
@@ -894,8 +896,8 @@ func UpdateBattle(battle *models.Battle) (bool, models.HandlerError) {
 	return true, errR
 }
 
-// ToBattleResponse - Battle Helper
-func ToBattleResponse(b *models.Battle) models.BattleCreated {
+// newBattleResponse - Battle Helper
+func newBattleResponse(b *models.Battle) models.BattleCreated {
 	slots := make(map[string]models.SlotResp)
 	for k, v := range b.Slots {
 		slots[k] = models.SlotResp{
@@ -912,6 +914,7 @@ func ToBattleResponse(b *models.Battle) models.BattleCreated {
 		Cost:       b.Cost,
 		Slots:      slots,
 		Status:     b.Status,
+		StatusCode: b.StatusCode,
 		Summery:    b.Summery,
 		CreatedAt:  b.CreatedAt,
 		PrivateKey: b.PrivateKey,
@@ -1108,6 +1111,9 @@ func Roll(battleID int64, roundKey int) {
 
 		// Last Roll
 		if roundKey >= len(battle.Cases) {
+			battle.Status = fmt.Sprintf("Rolled")
+			battle.StatusCode = 1
+
 			// Move to Option Level
 			if configs.Debug {
 				log.Printf("Battle %d steps(%d) are done.", battleID, roundKey)
@@ -1120,8 +1126,8 @@ func Roll(battleID int64, roundKey int) {
 		}
 
 		// Run Roll
-		battle.StatusCode = roundKey + 1
-		battle.Status = fmt.Sprintf("Roll %d", battle.StatusCode)
+		battle.Status = fmt.Sprintf("Roll %d", roundKey+1)
+		battle.StatusCode = 0
 		if battle.Summery.Steps == nil {
 			battle.Summery.Steps = make(map[int][]models.StepResult)
 		}
@@ -1250,6 +1256,10 @@ func optionActions(battleID int64) {
 	battle.Summery.Winners = winner
 	battle.Summery.Winners.TotalPrizes = utils.RoundToTwoDigits(total)
 	battle.Summery.Winners.SlotPrizes = utils.RoundToTwoDigits(total / float64(len(battle.Summery.Winners.Slots)))
+
+	battle.Status = "Resolving"
+	battle.StatusCode = 2
+
 	AddLog(battle, "Handel Options", 0)
 	UpdateBattle(battle)
 
@@ -1322,8 +1332,8 @@ func archive(battleID int) (models.HandlerOK, models.HandlerError) {
 		UpdateBattle(battle)
 	}
 
-	battle.Status = "Archived"
-	battle.StatusCode = -1
+	battle.Status = "Rewarding"
+	battle.StatusCode = 3
 	UpdateBattle(battle)
 
 	// Sanitize and build query
@@ -1359,6 +1369,10 @@ func archive(battleID int) (models.HandlerOK, models.HandlerError) {
 
 	// Wait for animation
 	time.Sleep(30 * time.Second)
+
+	battle.Status = "Archived"
+	battle.StatusCode = -1
+	UpdateBattle(battle)
 
 	// Add To Battle Index
 	DeleteBattle(int64(battle.ID))

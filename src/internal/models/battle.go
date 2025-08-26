@@ -69,6 +69,7 @@ type BattleCreated struct {
 	Cost       float64             `json:"cost"`
 	Slots      map[string]SlotResp `json:"slots"`
 	Status     string              `json:"status"`
+	StatusCode int                 `json:"statusCode"`
 	Summery    Summery             `json:"summery"`
 	CreatedAt  time.Time           `json:"createdAt"`
 	PrivateKey string              `json:"privateKey"`
