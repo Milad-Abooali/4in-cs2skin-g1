@@ -1368,7 +1368,7 @@ func archive(battleID int) (models.HandlerOK, models.HandlerError) {
 	events.Emit("all", "heartbeat", ClientBattleIndex(BattleIndex))
 
 	// Wait for animation
-	time.Sleep(30 * time.Second)
+	time.Sleep(600 * time.Second)
 
 	battle.Status = "Archived"
 	battle.StatusCode = -1

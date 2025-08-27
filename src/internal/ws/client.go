@@ -74,7 +74,7 @@ var wsRoutes = map[string]func(*websocket.Conn, map[string]interface{}, int64){
 	"addBot": func(c *websocket.Conn, d map[string]interface{}, reqId int64) {
 		dispatch(c, reqId, handlers.AddBot, d)
 	},
-	"AddBotAll": func(c *websocket.Conn, d map[string]interface{}, reqId int64) {
+	"addBotAll": func(c *websocket.Conn, d map[string]interface{}, reqId int64) {
 		dispatch(c, reqId, handlers.AddBotAll, d)
 	},
 	"clearSlot": func(c *websocket.Conn, d map[string]interface{}, reqId int64) {
