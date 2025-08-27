@@ -440,7 +440,7 @@ func Join(data map[string]interface{}) (models.HandlerOK, models.HandlerError) {
 	// Is Joined
 	if IsPlayerInBattle(battle.Players, userID) {
 		errR.Type = "ALREADY_JOINED"
-		errR.Code = 1017
+		errR.Code = 5009
 		return resR, errR
 	}
 
