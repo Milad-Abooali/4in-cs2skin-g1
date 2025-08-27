@@ -277,6 +277,7 @@ func AddBotAll(data map[string]interface{}) (models.HandlerOK, models.HandlerErr
 			botAdded[key] = map[string]interface{}{
 				"botId":   botId,
 				"botName": botName,
+				"slot":    key,
 			}
 			// update battle
 			AddLog(battle, "addBot", int64(userID))
@@ -294,7 +295,7 @@ func AddBotAll(data map[string]interface{}) (models.HandlerOK, models.HandlerErr
 		Roll(int64(battle.ID), 0)
 	}(battle.ID)
 	// Success
-	resR.Type = "addBot"
+	resR.Type = "addBotAll"
 	resR.Data = botAdded
 	return resR, errR
 }
