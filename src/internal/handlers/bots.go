@@ -185,6 +185,120 @@ func AddBot(data map[string]interface{}) (models.HandlerOK, models.HandlerError)
 	return resR, errR
 }
 
+func AddBotAll(data map[string]interface{}) (models.HandlerOK, models.HandlerError) {
+	var (
+		errR models.HandlerError
+		resR models.HandlerOK
+	)
+
+	if DbBots == nil || len(DbBots.Values) == 0 {
+		FillBots()
+	}
+
+	// Check Token
+	userJWT, vErr, ok := validate.RequireString(data, "token", false)
+	if !ok {
+		return resR, vErr
+	}
+	resp, err := utils.VerifyJWT(userJWT)
+	if err != nil {
+		return resR, models.HandlerError{}
+	}
+	errCode, status, errType := utils.SafeExtractErrorStatus(resp)
+	if status != 1 {
+		errR.Type = errType
+		errR.Code = errCode
+		if resp["data"] != nil {
+			errR.Data = resp["data"]
+		}
+		return resR, errR
+	}
+	userData := resp["data"].(map[string]interface{})
+	profile := userData["profile"].(map[string]interface{})
+	userID := int(profile["id"].(float64))
+
+	// Get Battle
+	battleId, vErr, ok := validate.RequireInt(data, "battleId")
+	if !ok {
+		return resR, vErr
+	}
+	battle, ok := GetBattle(battleId)
+	if !ok {
+		errR.Type = "NOT_FOUND"
+		errR.Code = 5003
+		return resR, errR
+	}
+
+	if battle.StatusCode > 0 {
+		errR.Type = "GAME_IS_LOCKED"
+		errR.Code = 5007
+		return resR, errR
+	}
+
+	// Is Owner
+	if userID != battle.CreatedBy {
+		errR.Type = "INVALID_CREDENTIALS"
+		errR.Code = 208
+		return resR, errR
+	}
+
+	// Loop Slot
+	botAdded := map[string]interface{}{}
+	for key, slot := range battle.Slots {
+		if slot.Type == "Empty" {
+			// Select a bot
+			bot := randomBot(DbBots)
+			botId := int(bot.GetStructValue().Fields["id"].GetNumberValue())
+			if IsPlayerInBattle(battle.Bots, botId) {
+				bot = randomBot(DbBots)
+				botId = int(bot.GetStructValue().Fields["id"].GetNumberValue())
+			}
+			if IsPlayerInBattle(battle.Bots, botId) {
+				bot = randomBot(DbBots)
+				botId = int(bot.GetStructValue().Fields["id"].GetNumberValue())
+			}
+			if IsPlayerInBattle(battle.Bots, botId) {
+				bot = randomBot(DbBots)
+				botId = int(bot.GetStructValue().Fields["id"].GetNumberValue())
+			}
+			botName := bot.GetStructValue().Fields["name"].GetStringValue()
+			clientSeed := utils.MD5UserID(botId)
+			// Join Battle
+			team := battle.Slots[key].Team
+			battle.Slots[key] = models.Slot{
+				ID:          botId,
+				DisplayName: botName,
+				ClientSeed:  clientSeed,
+				Type:        "Bot",
+				Team:        team,
+			}
+			battle.Bots = append(battle.Bots, botId)
+			AddClientSeed(battle.PFair, key, clientSeed)
+			botAdded[key] = map[string]interface{}{
+				"botId":   botId,
+				"botName": botName,
+			}
+			// update battle
+			AddLog(battle, "addBot", int64(userID))
+		}
+	}
+
+	// Force To Roll
+	battle.Status = "Start Rolling"
+	battle.StatusCode = 0
+	var update, errV = UpdateBattle(battle)
+	if update != true {
+		return resR, errV
+	}
+	go func(bid int) {
+		Roll(int64(battle.ID), 0)
+	}(battle.ID)
+	// Success
+	resR.Type = "addBot"
+	resR.Data = botAdded
+	return resR, errR
+}
+
 // ClearSlot - Handler
 func ClearSlot(data map[string]interface{}) (models.HandlerOK, models.HandlerError) {
 	var (

@@ -44,6 +44,7 @@ var postRoutes = map[string]func(map[string]interface{}) (models.HandlerOK, mode
 	// User Actions
 	"newBattle": handlers.NewBattle,
 	"addBot":    handlers.AddBot,
+	"AddBotAll": handlers.AddBotAll,
 	"clearSlot": handlers.ClearSlot,
 	"join":      handlers.Join,
 }
