@@ -16,7 +16,6 @@ import (
 	"google.golang.org/protobuf/types/known/structpb"
 	"log"
 	"os"
-	"reflect"
 	"strconv"
 	"strings"
 	"sync"
@@ -1175,12 +1174,10 @@ func Roll(battleID int64, roundKey int) {
 				Price:  price,
 			}
 
-			fmt.Println(reflect.TypeOf(item["price"]))
-
 			// reRun
 			if roundKey == len(battle.Cases)-1 {
 
-				for item["price"] == lastPrize {
+				for item["price"] == strconv.FormatFloat(lastPrize, 'f', -1, 64) {
 					nonce += 97
 					item = provablyfair.PickItem(
 						caseData,
