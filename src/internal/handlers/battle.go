@@ -16,6 +16,7 @@ import (
 	"google.golang.org/protobuf/types/known/structpb"
 	"log"
 	"os"
+	"reflect"
 	"strconv"
 	"strings"
 	"sync"
@@ -1173,6 +1174,8 @@ func Roll(battleID int64, roundKey int) {
 				ItemID: int(item["id"].(float64)),
 				Price:  price,
 			}
+
+			fmt.Println(reflect.TypeOf(item["price"]))
 
 			// reRun
 			if roundKey == len(battle.Cases)-1 {
