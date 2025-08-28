@@ -1148,8 +1148,8 @@ func Roll(battleID int64, roundKey int) {
 				log.Println("No clientSeed for slot:", slot)
 				continue
 			}
-			nonce++
-			nonce++
+
+			nonce += 97
 			item := provablyfair.PickItem(
 				caseData,
 				battle.PFair["serverSeed"].(string),
