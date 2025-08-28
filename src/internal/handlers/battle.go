@@ -1174,6 +1174,38 @@ func Roll(battleID int64, roundKey int) {
 				Price:  price,
 			}
 
+			// reRun
+			if roundKey == len(battle.Cases)-1 {
+
+				for item["price"] == lastPrize {
+					nonce += 97
+					item = provablyfair.PickItem(
+						caseData,
+						battle.PFair["serverSeed"].(string),
+						clientSeed,
+						nonce,
+					)
+					if configs.Debug {
+						log.Println("Roll "+strconv.Itoa(roundKey), slot, caseID, nonce, item["price"])
+					}
+
+					if item == nil {
+						log.Println("No item picked for slot:", slot)
+						continue
+					}
+
+					priceStr, _ = item["price"].(string)
+					price, _ = strconv.ParseFloat(priceStr, 64)
+
+					step = models.StepResult{
+						Slot:   slot,
+						ItemID: int(item["id"].(float64)),
+						Price:  price,
+					}
+				}
+
+			}
+
 			battle.Summery.Steps[roundKey] = append(battle.Summery.Steps[roundKey], step)
 			battle.Summery.Prizes[slot] += step.Price
 			AddTeamPrizes(battle, slot, step.Price)
