@@ -452,7 +452,7 @@ func CancelBattle(data map[string]interface{}) (models.HandlerOK, models.Handler
 		return resR, errR
 	}
 
-	battle.Status = fmt.Sprintf(`Canceled by users`)
+	battle.Status = fmt.Sprintf(`Canceled by user`)
 	battle.StatusCode = -2
 	var update, errV = UpdateBattle(battle)
 	if update != true {
