@@ -68,6 +68,9 @@ var wsRoutes = map[string]func(*websocket.Conn, map[string]interface{}, int64){
 	},
 
 	// User Actions
+	"cancelBattle": func(c *websocket.Conn, d map[string]interface{}, reqId int64) {
+		dispatch(c, reqId, handlers.CancelBattle, d)
+	},
 	"newBattle": func(c *websocket.Conn, d map[string]interface{}, reqId int64) {
 		dispatch(c, reqId, handlers.NewBattle, d)
 	},

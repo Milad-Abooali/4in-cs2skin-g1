@@ -363,6 +363,108 @@ func NewBattle(data map[string]interface{}) (models.HandlerOK, models.HandlerErr
 	return resR, errR
 }
 
+// CancelBattle
+func CancelBattle(data map[string]interface{}) (models.HandlerOK, models.HandlerError) {
+	var (
+		errR models.HandlerError
+		resR models.HandlerOK
+	)
+
+	// Check Token
+	userJWT, vErr, ok := validate.RequireString(data, "token", false)
+	if !ok {
+		return resR, vErr
+	}
+	resp, err := utils.VerifyJWT(userJWT)
+	if err != nil {
+		return resR, models.HandlerError{}
+	}
+	errCode, status, errType := utils.SafeExtractErrorStatus(resp)
+	if status != 1 {
+		errR.Type = errType
+		errR.Code = errCode
+		if resp["data"] != nil {
+			errR.Data = resp["data"]
+		}
+		return resR, errR
+	}
+	userData := resp["data"].(map[string]interface{})
+	profile := userData["profile"].(map[string]interface{})
+	userID := int(profile["id"].(float64))
+
+	// Get Battle
+	battleId, vErr, ok := validate.RequireInt(data, "battleId")
+	if !ok {
+		return resR, vErr
+	}
+	battle, ok := GetBattle(battleId)
+	if !ok {
+		errR.Type = "NOT_FOUND"
+		errR.Code = 5003
+		return resR, errR
+	}
+
+	// Is Owner
+	if userID != battle.CreatedBy {
+		errR.Type = "INVALID_CREDENTIALS"
+		errR.Code = 208
+		return resR, errR
+	}
+
+	// Check Status
+	if battle.StatusCode > 0 {
+		errR.Type = "GAME_IS_LOCKED"
+		errR.Code = 5007
+		return resR, errR
+	}
+
+	// Check Player Count
+	if len(battle.Players) > 0 {
+		errR.Type = "GAME_IS_LOCKED"
+		errR.Code = 5007
+		return resR, errR
+	}
+
+	// update battle
+	AddLog(battle, "cancelBattle", int64(userID))
+
+	// Refound Process
+
+	// Add Transaction
+	Transaction, err := utils.AddTransaction(
+		userID,
+		"game_win",
+		"1",
+		battle.Cost,
+		"",
+		"Refound",
+	)
+	if err != nil {
+		return resR, models.HandlerError{}
+	}
+	errCode, status, errType = utils.SafeExtractErrorStatus(Transaction)
+	if status != 1 {
+		errR.Type = errType
+		errR.Code = errCode
+		if resp["data"] != nil {
+			errR.Data = resp["data"]
+		}
+		return resR, errR
+	}
+
+	battle.Status = fmt.Sprintf(`Canceled by users`)
+	battle.StatusCode = -2
+	var update, errV = UpdateBattle(battle)
+	if update != true {
+		return resR, errV
+	}
+
+	// Success
+	resR.Type = "cancelBattle"
+	resR.Data = map[string]interface{}{}
+	return resR, errR
+}
+
 // Join - Handler
 func Join(data map[string]interface{}) (models.HandlerOK, models.HandlerError) {
 	var (
@@ -1032,6 +1134,7 @@ func ClientBattleIndex(battles map[int64]*models.Battle) map[int64]models.Battle
 			StatusCode:     b.StatusCode,
 			Summery:        b.Summery,
 			CreatedAt:      b.CreatedAt,
+			CreatedBy:      b.CreatedBy,
 			UpdatedAt:      b.UpdatedAt,
 			ServerSeedHash: b.PFair["serverSeedHash"].(string),
 		}

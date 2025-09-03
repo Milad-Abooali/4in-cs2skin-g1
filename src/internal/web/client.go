@@ -42,11 +42,12 @@ var postRoutes = map[string]func(map[string]interface{}) (models.HandlerOK, mode
 	"getLiveBattlesAdmin": handlers.GetLiveBattlesAdmin,
 
 	// User Actions
-	"newBattle": handlers.NewBattle,
-	"addBot":    handlers.AddBot,
-	"addBotAll": handlers.AddBotAll,
-	"clearSlot": handlers.ClearSlot,
-	"join":      handlers.Join,
+	"cancelBattle": handlers.CancelBattle,
+	"newBattle":    handlers.NewBattle,
+	"addBot":       handlers.AddBot,
+	"addBotAll":    handlers.AddBotAll,
+	"clearSlot":    handlers.ClearSlot,
+	"join":         handlers.Join,
 }
 
 func HandleHTTP(w http.ResponseWriter, r *http.Request) {

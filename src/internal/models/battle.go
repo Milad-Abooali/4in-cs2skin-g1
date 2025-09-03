@@ -100,6 +100,7 @@ type BattleClient struct {
 	StatusCode     int              `json:"statusCode"`
 	Summery        Summery          `json:"summery"`
 	CreatedAt      time.Time        `json:"createdAt"`
+	CreatedBy      int              `json:"createdBy"`
 	UpdatedAt      time.Time        `json:"updatedAt"`
 	ServerSeedHash string           `json:"serverSeedHash"`
 }
