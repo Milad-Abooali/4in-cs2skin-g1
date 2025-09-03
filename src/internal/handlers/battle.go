@@ -459,6 +459,8 @@ func CancelBattle(data map[string]interface{}) (models.HandlerOK, models.Handler
 		return resR, errV
 	}
 
+	go dropBattle(battle.ID, 0)
+
 	// Success
 	resR.Type = "cancelBattle"
 	resR.Data = map[string]interface{}{}
@@ -1509,11 +1511,19 @@ func archive(battleID int) (models.HandlerOK, models.HandlerError) {
 	battle.StatusCode = -1
 	UpdateBattle(battle)
 
-	// Add To Battle Index
-	DeleteBattle(int64(battle.ID))
+	// Drop Battle from Index
+	go dropBattle(battle.ID, 0)
 
 	// Emit | heartbeat
 	events.Emit("all", "heartbeat", ClientBattleIndex(BattleIndex))
 
 	return resR, models.HandlerError{}
+}
+
+func dropBattle(battleId int, after int) {
+	time.Sleep(time.Duration(after) * time.Second)
+	battle, ok := GetBattle(int64(battleId))
+	if ok {
+		DeleteBattle(int64(battle.ID))
+	}
 }
