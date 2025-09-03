@@ -419,7 +419,7 @@ func CancelBattle(data map[string]interface{}) (models.HandlerOK, models.Handler
 	}
 
 	// Check Player Count
-	if len(battle.Players) > 0 {
+	if len(battle.Players) > 1 {
 		errR.Type = "GAME_IS_LOCKED"
 		errR.Code = 5007
 		return resR, errR
