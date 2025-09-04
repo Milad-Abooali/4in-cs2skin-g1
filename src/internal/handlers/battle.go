@@ -643,6 +643,140 @@ func Join(data map[string]interface{}) (models.HandlerOK, models.HandlerError) {
 	return resR, errR
 }
 
+func ChangeSeat(data map[string]interface{}) (models.HandlerOK, models.HandlerError) {
+	var (
+		errR models.HandlerError
+		resR models.HandlerOK
+	)
+
+	if DbBots == nil || len(DbBots.Values) == 0 {
+		FillBots()
+	}
+	if len(CasesImpacted) == 0 {
+		FillCaseImpact()
+	}
+
+	// Check Token
+	userJWT, vErr, ok := validate.RequireString(data, "token", false)
+	if !ok {
+		return resR, vErr
+	}
+	resp, err := utils.VerifyJWT(userJWT)
+	if err != nil {
+		return resR, models.HandlerError{}
+	}
+	errCode, status, errType := utils.SafeExtractErrorStatus(resp)
+	if status != 1 {
+		errR.Type = errType
+		errR.Code = errCode
+		if resp["data"] != nil {
+			errR.Data = resp["data"]
+		}
+		return resR, errR
+	}
+	userData := resp["data"].(map[string]interface{})
+	profile := userData["profile"].(map[string]interface{})
+	userID := int(profile["id"].(float64))
+	displayName := profile["display_name"].(string)
+
+	// Get Battle
+	battleId, vErr, ok := validate.RequireInt(data, "battleId")
+	if !ok {
+		return resR, vErr
+	}
+	battle, ok := GetBattle(battleId)
+	if !ok {
+		errR.Type = "NOT_FOUND"
+		errR.Code = 5003
+		return resR, errR
+	}
+
+	if battle.StatusCode > 0 {
+		errR.Type = "GAME_IS_LOCKED"
+		errR.Code = 5007
+		return resR, errR
+	}
+
+	// Get Current Slot
+	var oldSlot string
+	for key, slot := range battle.Slots {
+		if slot.ID == userID {
+			oldSlot = key
+			break
+		}
+	}
+	fmt.Println("Slot key for ID 54:", oldSlot)
+
+	// Clear Slot
+	battle.Slots[oldSlot] = models.Slot{
+		ID:          0,
+		DisplayName: "",
+		ClientSeed:  "",
+		Type:        "Empty",
+	}
+
+	// Check Slot
+	slotId, vErr, ok := validate.RequireInt(data, "slotId")
+	if !ok {
+		return resR, vErr
+	}
+	slotK := fmt.Sprintf("s%d", slotId)
+	if battle.Slots[slotK].Type != "Empty" {
+		errR.Type = "SLOT_IS_NOT_EMPTY"
+		errR.Code = 1027
+		return resR, errR
+	}
+
+	// Join New Slot
+	clientSeed := utils.MD5UserID(userID)
+	team := battle.Slots[slotK].Team
+	battle.Slots[slotK] = models.Slot{
+		ID:          userID,
+		DisplayName: displayName,
+		ClientSeed:  clientSeed,
+		Type:        "Players",
+		Team:        team,
+	}
+	AddClientSeed(battle.PFair, slotK, clientSeed)
+
+	// update battle
+	AddLog(battle, "changeSeat", int64(userID))
+
+	emptyCount := 0
+	for _, slot := range battle.Slots {
+		if slot.Type == "Empty" {
+			emptyCount++
+		}
+	}
+	if emptyCount == 0 {
+		// Force To Roll
+		battle.Status = "Start Rolling"
+		battle.StatusCode = 0
+		var update, errV = UpdateBattle(battle)
+		if update != true {
+			return resR, errV
+		}
+		go func(bid int) {
+			Roll(int64(battle.ID), 0)
+		}(battle.ID)
+	} else {
+		battle.Status = fmt.Sprintf(`Waiting for %d users`, emptyCount)
+		battle.StatusCode = 0
+		var update, errV = UpdateBattle(battle)
+		if update != true {
+			return resR, errV
+		}
+	}
+
+	// Success
+	resR.Type = "changeSeat"
+	resR.Data = map[string]interface{}{
+		"emptySlots": emptyCount,
+		"clientSeed": clientSeed,
+	}
+	return resR, errR
+}
+
 // GetBattleHistory - Handler
 func GetBattleHistory(data map[string]interface{}) (models.HandlerOK, models.HandlerError) {
 	var (

@@ -86,6 +86,9 @@ var wsRoutes = map[string]func(*websocket.Conn, map[string]interface{}, int64){
 	"join": func(c *websocket.Conn, d map[string]interface{}, reqId int64) {
 		dispatch(c, reqId, handlers.Join, d)
 	},
+	"changeSeat": func(c *websocket.Conn, d map[string]interface{}, reqId int64) {
+		dispatch(c, reqId, handlers.ChangeSeat, d)
+	},
 }
 
 func HandleWebSocket(w http.ResponseWriter, r *http.Request) {

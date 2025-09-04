@@ -48,6 +48,7 @@ var postRoutes = map[string]func(map[string]interface{}) (models.HandlerOK, mode
 	"addBotAll":    handlers.AddBotAll,
 	"clearSlot":    handlers.ClearSlot,
 	"join":         handlers.Join,
+	"changeSeat":   handlers.ChangeSeat,
 }
 
 func HandleHTTP(w http.ResponseWriter, r *http.Request) {
