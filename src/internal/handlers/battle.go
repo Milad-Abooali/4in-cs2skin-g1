@@ -15,6 +15,7 @@ import (
 	"github.com/Milad-Abooali/4in-cs2skin-g1/src/utils"
 	"google.golang.org/protobuf/types/known/structpb"
 	"log"
+	"math/rand"
 	"os"
 	"strconv"
 	"strings"
@@ -1353,6 +1354,17 @@ func Roll(battleID int64, roundKey int) {
 			battle.Status = fmt.Sprintf("Rolled")
 			battle.StatusCode = 1
 
+			if utils.InArray(battle.Options, "jackpot") {
+				// Ger Percentage
+				var total float64
+				for _, value := range battle.Summery.Prizes {
+					total += value
+				}
+				for key, value := range battle.Summery.Prizes {
+					battle.Summery.Jackpot[key] = (value / total) * 100
+				}
+			}
+
 			// Move to Option Level
 			if configs.Debug {
 				log.Printf("Battle %d steps(%d) are done.", battleID, roundKey)
@@ -1502,19 +1514,14 @@ func optionActions(battleID int64) {
 				}
 			}
 			if utils.InArray(battle.Options, "jackpot") && !utils.InArray(battle.Options, "madness") {
-				for _, t := range battle.Teams {
-					if t.RolWin > winner.RolWin {
-						winner = t
-					}
-				}
-
+				winnerSlot := weightedRandom(battle.Summery.Jackpot, false)
+				teamID := battle.Slots[winnerSlot].Team
+				winner = battle.Teams[teamID]
 			}
 			if utils.InArray(battle.Options, "jackpot") && utils.InArray(battle.Options, "madness") {
-				for _, t := range battle.Teams {
-					if t.RolWin < winner.RolWin {
-						winner = t
-					}
-				}
+				winnerSlot := weightedRandom(battle.Summery.Jackpot, true)
+				teamID := battle.Slots[winnerSlot].Team
+				winner = battle.Teams[teamID]
 			}
 		}
 	}
@@ -1660,4 +1667,37 @@ func dropBattle(battleId int, after int) {
 	if ok {
 		DeleteBattle(int64(battle.ID))
 	}
+}
+
+func weightedRandom(prizes map[string]float64, inverse bool) string {
+	var total float64
+	weights := make(map[string]float64)
+	if inverse {
+		for key, weight := range prizes {
+			if weight == 0 {
+				weights[key] = 0
+			} else {
+				weights[key] = 1 / weight
+			}
+			total += weights[key]
+		}
+	} else {
+		for key, weight := range prizes {
+			weights[key] = weight
+			total += weight
+		}
+	}
+	rand.Seed(time.Now().UnixNano())
+	random := rand.Float64() * total
+	var cumulative float64
+	for key, weight := range weights {
+		cumulative += weight
+		if random <= cumulative {
+			return key
+		}
+	}
+	for key := range prizes {
+		return key
+	}
+	return ""
 }
