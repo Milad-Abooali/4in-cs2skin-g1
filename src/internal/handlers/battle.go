@@ -15,7 +15,7 @@ import (
 	"github.com/Milad-Abooali/4in-cs2skin-g1/src/utils"
 	"google.golang.org/protobuf/types/known/structpb"
 	"log"
-	"math/rand"
+	"math/rand/v2"
 	"os"
 	"strconv"
 	"strings"
@@ -292,8 +292,8 @@ func NewBattle(data map[string]interface{}) (models.HandlerOK, models.HandlerErr
 	// Winner Team
 	switch newBattle.PlayerType {
 	case "1v1", "1v1v1", "1v1v1v1", "1v6":
-		var i int = 0
-		for key, _ := range newBattle.Slots {
+		var i = 0
+		for key := range newBattle.Slots {
 			newBattle.Teams = append(newBattle.Teams, models.Team{
 				Slots: []string{key},
 			})
@@ -364,7 +364,7 @@ func NewBattle(data map[string]interface{}) (models.HandlerOK, models.HandlerErr
 	return resR, errR
 }
 
-// CancelBattle
+// CancelBattle - Handler
 func CancelBattle(data map[string]interface{}) (models.HandlerOK, models.HandlerError) {
 	var (
 		errR models.HandlerError
@@ -870,7 +870,7 @@ func GetBattleHistory(data map[string]interface{}) (models.HandlerOK, models.Han
 }
 
 // GetLiveBattles - Handler
-func GetLiveBattles(data map[string]interface{}) (models.HandlerOK, models.HandlerError) {
+func GetLiveBattles(_ map[string]interface{}) (models.HandlerOK, models.HandlerError) {
 	var (
 		errR models.HandlerError
 		resR models.HandlerOK
@@ -1050,7 +1050,7 @@ func AddTeamRollWin(b *models.Battle, slotKey string) {
 
 // castStringSlice - Battle Helper
 func castStringSlice(val interface{}) []string {
-	out := []string{}
+	var out []string
 	if arr, ok := val.([]interface{}); ok {
 		for _, v := range arr {
 			out = append(out, fmt.Sprintf("%v", v))
@@ -1061,7 +1061,7 @@ func castStringSlice(val interface{}) []string {
 
 // castCases - Battle Helper
 func castCases(val interface{}) []map[string]int {
-	out := []map[string]int{}
+	var out []map[string]int
 	if arr, ok := val.([]interface{}); ok {
 		for _, v := range arr {
 			if m, ok := v.(map[interface{}]interface{}); ok { // بسته به decode WS
@@ -1091,7 +1091,7 @@ func castCases(val interface{}) []map[string]int {
 func UpdateBattle(battle *models.Battle) (bool, models.HandlerError) {
 	var (
 		errR models.HandlerError
-		bID  int = battle.ID
+		bID  = battle.ID
 	)
 	battle.UpdatedAt = time.Now()
 	battleJSON, err := json.Marshal(battle)
@@ -1393,7 +1393,7 @@ func Roll(battleID int64, roundKey int) {
 			lastPrize  float64
 		)
 		lastPrize = 0
-		for slot, _ := range battle.Slots {
+		for slot := range battle.Slots {
 			clientSeed, ok := battle.PFair["clientSeed"].(map[string]interface{})[slot].(string)
 			if !ok {
 				log.Println("No clientSeed for slot:", slot)
@@ -1661,6 +1661,7 @@ func archive(battleID int) (models.HandlerOK, models.HandlerError) {
 	return resR, models.HandlerError{}
 }
 
+// dropBattle - Battle Helper
 func dropBattle(battleId int, after int) {
 	time.Sleep(time.Duration(after) * time.Second)
 	battle, ok := GetBattle(int64(battleId))
@@ -1669,9 +1670,14 @@ func dropBattle(battleId int, after int) {
 	}
 }
 
+// weightedRandom - Jackpot Helper
+// selects a key from the given prize map based on weighted probability.
+// If inverse is true, the weights are inverted (1/weight).
 func weightedRandom(prizes map[string]float64, inverse bool) string {
 	var total float64
 	weights := make(map[string]float64)
+
+	// Calculate weights and total
 	if inverse {
 		for key, weight := range prizes {
 			if weight == 0 {
@@ -1687,8 +1693,11 @@ func weightedRandom(prizes map[string]float64, inverse bool) string {
 			total += weight
 		}
 	}
-	rand.Seed(time.Now().UnixNano())
+
+	// Generate a random value within the total range
 	random := rand.Float64() * total
+
+	// Iterate over weights and find the selected key
 	var cumulative float64
 	for key, weight := range weights {
 		cumulative += weight
@@ -1696,8 +1705,11 @@ func weightedRandom(prizes map[string]float64, inverse bool) string {
 			return key
 		}
 	}
+
+	// Fallback: return the first available key
 	for key := range prizes {
 		return key
 	}
+
 	return ""
 }

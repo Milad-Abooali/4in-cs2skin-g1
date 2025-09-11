@@ -19,7 +19,7 @@ func dispatchWeb(w http.ResponseWriter, fn func(map[string]interface{}) (models.
 		return
 	}
 	handlers.SendWebResponse(w, res.Type, res.Data)
-	ws.EmitServer(req, res.Type, res.Data)
+	ws.EmitServer(res.Type)
 }
 
 // All POST routes mapped to handlers

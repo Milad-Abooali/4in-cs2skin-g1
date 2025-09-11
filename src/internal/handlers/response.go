@@ -78,7 +78,7 @@ func SendWebError(w http.ResponseWriter, resType string, eCode int, eExtra ...an
 	}
 }
 
-func EmitServer(req map[string]interface{}, resType string, resData interface{}) {
+func EmitServer(resType string) {
 	switch resType {
 	case "test", "getBots", "getCases", "getBattleHistory":
 		// no emit

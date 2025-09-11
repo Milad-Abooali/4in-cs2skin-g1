@@ -9,14 +9,9 @@ import (
 	"log"
 )
 
-var (
-	ServerSeed = "SERVER_SECRET"
-	ClientSeed = "PLAYER_SEED"
-)
-
-// ProvablyFairRand generates a deterministic "random" number based on server seed, client seed and nonce.
+// FairRand generates a deterministic "random" number based on server seed, client seed and nonce.
 // max: the upper limit of the random number (exclusive)
-func ProvablyFairRand(serverSeed, clientSeed string, nonce, max int) int {
+func FairRand(serverSeed, clientSeed string, nonce, max int) int {
 	input := fmt.Sprintf("%s:%s:%d", serverSeed, clientSeed, nonce)
 	hash := sha256.Sum256([]byte(input))
 	num := binary.BigEndian.Uint32(hash[:4])
@@ -26,7 +21,7 @@ func ProvablyFairRand(serverSeed, clientSeed string, nonce, max int) int {
 func PickItem(caseData map[string]interface{}, serverSeed, clientSeed string, nonce int) map[string]interface{} {
 
 	// Generate provably fair random number 0..1,000,000
-	r := ProvablyFairRand(serverSeed, clientSeed, nonce, 1_000_001)
+	r := FairRand(serverSeed, clientSeed, nonce, 1_000_001)
 
 	itemsRaw, ok := caseData["items"].(map[int]map[string]interface{})
 	if !ok {

@@ -24,7 +24,7 @@ func dispatch(conn *websocket.Conn, reqId int64, fn func(map[string]interface{})
 		return
 	}
 	handlers.SendWSResponse(conn, reqId, res.Type, res.Data)
-	EmitServer(req, res.Type, res.Data)
+	EmitServer(res.Type)
 }
 
 // All WS routes mapped to handlers
@@ -32,9 +32,6 @@ var wsRoutes = map[string]func(*websocket.Conn, map[string]interface{}, int64){
 	// Ping
 	"ping": func(c *websocket.Conn, d map[string]interface{}, reqId int64) {
 		dispatch(c, reqId, handlers.Ping, d)
-	},
-	"test": func(c *websocket.Conn, d map[string]interface{}, reqId int64) {
-		dispatch(c, reqId, handlers.Test, d)
 	},
 
 	// Bots

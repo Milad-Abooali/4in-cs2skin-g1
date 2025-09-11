@@ -51,34 +51,6 @@ func UnregisterConn(c *websocket.Conn) {
 	delete(byConn, c)
 }
 
-// BindUser binds an existing connection to a userID (after login)
-func BindUser(c *websocket.Conn, userID int64) {
-	regMu.Lock()
-	defer regMu.Unlock()
-
-	ci, ok := byConn[c]
-	if !ok {
-		return // not registered
-	}
-	// remove from previous bucket
-	if ci.UserID != 0 {
-		if set, ok := byUser[ci.UserID]; ok {
-			delete(set, c)
-			if len(set) == 0 {
-				delete(byUser, ci.UserID)
-			}
-		}
-	}
-	// add to new bucket
-	ci.UserID = userID
-	if userID != 0 {
-		if byUser[userID] == nil {
-			byUser[userID] = make(map[*websocket.Conn]*connInfo)
-		}
-		byUser[userID][c] = ci
-	}
-}
-
 // internal helper: send payload to a list of connections
 func emitToTargets(targets []*connInfo, payload any) {
 	if len(targets) == 0 {
@@ -180,7 +152,7 @@ func EmitToGuestsEvent(eventType string, data any) {
 	})
 }
 
-func EmitServer(req map[string]interface{}, resType string, resData interface{}) {
+func EmitServer(resType string) {
 
 	switch resType {
 	case "test",

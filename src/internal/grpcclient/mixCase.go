@@ -56,7 +56,7 @@ func getProtoValue(v *structpb.Value) interface{} {
 		}
 		return m
 	case *structpb.Value_ListValue:
-		arr := []interface{}{}
+		var arr []interface{}
 		for _, val := range kind.ListValue.Values {
 			arr = append(arr, getProtoValue(val))
 		}

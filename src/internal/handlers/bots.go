@@ -8,8 +8,7 @@ import (
 	"github.com/Milad-Abooali/4in-cs2skin-g1/src/utils"
 	"google.golang.org/protobuf/types/known/structpb"
 	"log"
-	"math/rand"
-	"time"
+	"math/rand/v2"
 )
 
 var (
@@ -17,7 +16,7 @@ var (
 )
 
 // GetBots - Handler
-func GetBots(data map[string]interface{}) (models.HandlerOK, models.HandlerError) {
+func GetBots(_ map[string]interface{}) (models.HandlerOK, models.HandlerError) {
 	var (
 		errR models.HandlerError
 		resR models.HandlerOK
@@ -34,7 +33,7 @@ func GetBots(data map[string]interface{}) (models.HandlerOK, models.HandlerError
 }
 
 // UpdateBots - Handler
-func UpdateBots(data map[string]interface{}) (models.HandlerOK, models.HandlerError) {
+func UpdateBots(_ map[string]interface{}) (models.HandlerOK, models.HandlerError) {
 	var (
 		errR models.HandlerError
 		resR models.HandlerOK
@@ -185,6 +184,7 @@ func AddBot(data map[string]interface{}) (models.HandlerOK, models.HandlerError)
 	return resR, errR
 }
 
+// AddBotAll - Handler
 func AddBotAll(data map[string]interface{}) (models.HandlerOK, models.HandlerError) {
 	var (
 		errR models.HandlerError
@@ -414,7 +414,7 @@ func ClearSlot(data map[string]interface{}) (models.HandlerOK, models.HandlerErr
 	return resR, errR
 }
 
-// FillBots - Bot Helper
+// FillBots - Helper
 func FillBots() (*structpb.ListValue, models.HandlerError) {
 	log.Println("Fill DbBots...")
 	var (
@@ -447,13 +447,11 @@ func FillBots() (*structpb.ListValue, models.HandlerError) {
 	return DbBots, errR
 }
 
-// FillBots - Bot Helper
+// randomBot - Helper
 func randomBot(DbBots *structpb.ListValue) *structpb.Value {
 	if DbBots == nil || len(DbBots.Values) == 0 {
 		return nil
 	}
-
-	rand.Seed(time.Now().UnixNano())
-	idx := rand.Intn(len(DbBots.Values))
+	idx := rand.IntN(len(DbBots.Values))
 	return DbBots.Values[idx]
 }

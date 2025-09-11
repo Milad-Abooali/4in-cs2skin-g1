@@ -15,7 +15,7 @@ var (
 )
 
 // GetCases - Handler
-func GetCases(data map[string]interface{}) (models.HandlerOK, models.HandlerError) {
+func GetCases(_ map[string]interface{}) (models.HandlerOK, models.HandlerError) {
 	var (
 		errR models.HandlerError
 		resR models.HandlerOK
@@ -32,7 +32,7 @@ func GetCases(data map[string]interface{}) (models.HandlerOK, models.HandlerErro
 }
 
 // UpdateCases - Handler
-func UpdateCases(data map[string]interface{}) (models.HandlerOK, models.HandlerError) {
+func UpdateCases(_ map[string]interface{}) (models.HandlerOK, models.HandlerError) {
 	var (
 		errR models.HandlerError
 		resR models.HandlerOK
@@ -46,7 +46,7 @@ func UpdateCases(data map[string]interface{}) (models.HandlerOK, models.HandlerE
 	return resR, errR
 }
 
-// FillCaseImpact - Case Helper
+// FillCaseImpact - Helper
 func FillCaseImpact() (map[int]grpcclient.CaseWithItems, models.HandlerError) {
 	log.Println("Fill CasesImpacted...")
 	var (
