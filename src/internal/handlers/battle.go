@@ -1355,11 +1355,23 @@ func Roll(battleID int64, roundKey int) {
 			battle.StatusCode = 1
 
 			if utils.InArray(battle.Options, "jackpot") {
-				// Ger Percentage
+				// Ensure Jackpot map is initialized
+				if battle.Summery.Jackpot == nil {
+					battle.Summery.Jackpot = make(map[string]float64)
+				}
+
+				// Calculate total
 				var total float64
 				for _, value := range battle.Summery.Prizes {
 					total += value
 				}
+
+				// Avoid division by zero
+				if total == 0 {
+					return
+				}
+
+				// Fill jackpot percentages
 				for key, value := range battle.Summery.Prizes {
 					battle.Summery.Jackpot[key] = (value / total) * 100
 				}
