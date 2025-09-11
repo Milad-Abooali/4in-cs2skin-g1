@@ -1373,7 +1373,7 @@ func Roll(battleID int64, roundKey int) {
 
 				// Fill jackpot percentages
 				for key, value := range battle.Summery.Prizes {
-					battle.Summery.Jackpot[key] = (value / total) * 100
+					battle.Summery.Jackpot[key] = utils.RoundToTwoDigits((value / total) * 100)
 				}
 			}
 
