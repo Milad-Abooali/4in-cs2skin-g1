@@ -6,7 +6,7 @@ import (
 	"os"
 	"time"
 
-	pb "github.com/Milad-Abooali/4in-cs2skin-g1/src/proto"
+	pb "github.com/Milad-Abooali/4in-cs2skin-g2/src/proto"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 )
@@ -17,24 +17,22 @@ var client pb.DataServiceClient
 func Connect(address string) {
 	log.Println("Connecting to Core gRPC:", address)
 
+	// Use context with timeout to control blocking behavior
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
+	// New API: grpc.NewClient replaces deprecated Dial / DialContext
 	conn, err := grpc.NewClient(
 		address,
 		grpc.WithTransportCredentials(insecure.NewCredentials()),
-		grpc.WithConnectParams(grpc.ConnectParams{
-			MinConnectTimeout: 5 * time.Second,
-		}),
 	)
 	if err != nil {
-		log.Fatalf("Failed to connect to gRPC Core: %v", err)
+		log.Fatalf("❌ Failed to connect to gRPC Core: %v", err)
 	}
 
-	// Make sure the connection is ready before continuing
-	state := conn.GetState()
-	if !conn.WaitForStateChange(ctx, state) {
-		log.Fatalf("Connection not ready before timeout")
+	// Ensure context did not time out while connecting
+	if ctx.Err() != nil {
+		log.Fatalf("❌ Connection attempt failed: %v", ctx.Err())
 	}
 
 	client = pb.NewDataServiceClient(conn)
