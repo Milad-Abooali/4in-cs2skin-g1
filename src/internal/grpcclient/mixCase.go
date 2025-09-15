@@ -2,7 +2,6 @@ package grpcclient
 
 import (
 	"google.golang.org/protobuf/types/known/structpb"
-	"log"
 )
 
 type CaseWithItems map[string]interface{}
@@ -35,14 +34,6 @@ func MergeCasesAndItems(
 
 	// Add Items to Cases
 	for _, it := range items {
-
-		if it.Fields["id"].GetNumberValue() == 507 {
-			log.Println(it)
-		}
-
-		if it.Fields["id"].GetNumberValue() == 508 {
-			log.Println(it)
-		}
 
 		caseIDField, ok := it.Fields["case_id"]
 		if !ok {
