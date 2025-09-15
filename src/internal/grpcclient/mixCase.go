@@ -7,11 +7,22 @@ import (
 
 type CaseWithItems map[string]interface{}
 
-func MergeCasesAndItems(cases []*structpb.Struct, items []*structpb.Struct) map[int]CaseWithItems {
+func MergeCasesAndItems(
+	cases []*structpb.Struct,
+	items []*structpb.Struct,
+) map[int]CaseWithItems {
+
 	result := make(map[int]CaseWithItems)
 
-	for _, c := range cases {
-		id := int(c.Fields["id"].GetNumberValue())
+	// Make Cases
+	for i, c := range cases {
+		idField, ok := c.Fields["id"]
+		if !ok {
+			log.Printf("[MergeCasesAndItems] case #%d has no 'id' field", i)
+			continue
+		}
+
+		id := int(idField.GetNumberValue())
 
 		caseMap := make(CaseWithItems)
 		for k, v := range c.Fields {
@@ -19,26 +30,49 @@ func MergeCasesAndItems(cases []*structpb.Struct, items []*structpb.Struct) map[
 		}
 
 		caseMap["items"] = make(map[int]map[string]interface{})
-
 		result[id] = caseMap
 	}
 
-	for _, it := range items {
-		caseID := int(it.Fields["case_id"].GetNumberValue())
-		itemID := int(it.Fields["id"].GetNumberValue())
-
-		if caseMap, ok := result[caseID]; ok {
-			itemsMap := caseMap["items"].(map[int]map[string]interface{})
-
-			itemMap := make(map[string]interface{})
-			for k, v := range it.Fields {
-				itemMap[k] = getProtoValue(v)
-			}
-
-			itemsMap[itemID] = itemMap
-		} else {
-			log.Println(">>> B >>>", caseID)
+	// Add Items to Cases
+	for j, it := range items {
+		caseIDField, ok := it.Fields["case_id"]
+		if !ok {
+			log.Printf("[MergeCasesAndItems] item #%d has no 'case_id' field", j)
+			continue
 		}
+		itemIDField, ok := it.Fields["id"]
+		if !ok {
+			log.Printf("[MergeCasesAndItems] item #%d has no 'id' field", j)
+			continue
+		}
+
+		caseID := int(caseIDField.GetNumberValue())
+		itemID := int(itemIDField.GetNumberValue())
+
+		caseMap, ok := result[caseID]
+		if !ok {
+			log.Printf("[MergeCasesAndItems] item #%d references missing case_id=%d", j, caseID)
+			continue
+		}
+
+		itemsVal, ok := caseMap["items"]
+		if !ok {
+			log.Printf("[MergeCasesAndItems] case_id=%d has no 'items' field", caseID)
+			continue
+		}
+
+		itemsMap, ok := itemsVal.(map[int]map[string]interface{})
+		if !ok {
+			log.Printf("[MergeCasesAndItems] case_id=%d 'items' type assertion failed", caseID)
+			continue
+		}
+
+		itemMap := make(map[string]interface{})
+		for k, v := range it.Fields {
+			itemMap[k] = getProtoValue(v)
+		}
+
+		itemsMap[itemID] = itemMap
 	}
 
 	return result
