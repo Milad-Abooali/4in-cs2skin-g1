@@ -2,7 +2,6 @@ package grpcclient
 
 import (
 	"google.golang.org/protobuf/types/known/structpb"
-	"log"
 )
 
 type CaseWithItems map[string]interface{}
@@ -15,10 +14,10 @@ func MergeCasesAndItems(
 	result := make(map[int]CaseWithItems)
 
 	// Make Cases
-	for i, c := range cases {
+	for _, c := range cases {
 		idField, ok := c.Fields["id"]
 		if !ok {
-			log.Printf("[MergeCasesAndItems] case #%d has no 'id' field", i)
+			// log.Printf("[MergeCasesAndItems] case #%d has no 'id' field", i)
 			continue
 		}
 
@@ -34,15 +33,15 @@ func MergeCasesAndItems(
 	}
 
 	// Add Items to Cases
-	for j, it := range items {
+	for _, it := range items {
 		caseIDField, ok := it.Fields["case_id"]
 		if !ok {
-			log.Printf("[MergeCasesAndItems] item #%d has no 'case_id' field", j)
+			// log.Printf("[MergeCasesAndItems] item #%d has no 'case_id' field", j)
 			continue
 		}
 		itemIDField, ok := it.Fields["id"]
 		if !ok {
-			log.Printf("[MergeCasesAndItems] item #%d has no 'id' field", j)
+			// log.Printf("[MergeCasesAndItems] item #%d has no 'id' field", j)
 			continue
 		}
 
@@ -51,19 +50,19 @@ func MergeCasesAndItems(
 
 		caseMap, ok := result[caseID]
 		if !ok {
-			log.Printf("[MergeCasesAndItems] item #%d references missing case_id=%d", j, caseID)
+			// log.Printf("[MergeCasesAndItems] item #%d references missing case_id=%d", j, caseID)
 			continue
 		}
 
 		itemsVal, ok := caseMap["items"]
 		if !ok {
-			log.Printf("[MergeCasesAndItems] case_id=%d has no 'items' field", caseID)
+			// log.Printf("[MergeCasesAndItems] case_id=%d has no 'items' field", caseID)
 			continue
 		}
 
 		itemsMap, ok := itemsVal.(map[int]map[string]interface{})
 		if !ok {
-			log.Printf("[MergeCasesAndItems] case_id=%d 'items' type assertion failed", caseID)
+			// log.Printf("[MergeCasesAndItems] case_id=%d 'items' type assertion failed", caseID)
 			continue
 		}
 
