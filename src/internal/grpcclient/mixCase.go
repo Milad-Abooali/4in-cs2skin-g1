@@ -2,6 +2,7 @@ package grpcclient
 
 import (
 	"google.golang.org/protobuf/types/known/structpb"
+	"log"
 )
 
 type CaseWithItems map[string]interface{}
@@ -35,6 +36,8 @@ func MergeCasesAndItems(cases []*structpb.Struct, items []*structpb.Struct) map[
 			}
 
 			itemsMap[itemID] = itemMap
+		} else {
+			log.Println(">>> B >>>", caseID)
 		}
 	}
 
