@@ -36,11 +36,11 @@ func MergeCasesAndItems(
 	// Add Items to Cases
 	for _, it := range items {
 
-		if it.Fields["case_id"].GetNumberValue() == 507 {
+		if it.Fields["id"].GetNumberValue() == 507 {
 			log.Println(it)
 		}
 
-		if it.Fields["case_id"].GetNumberValue() == 508 {
+		if it.Fields["id"].GetNumberValue() == 508 {
 			log.Println(it)
 		}
 
