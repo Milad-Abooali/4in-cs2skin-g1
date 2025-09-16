@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/Milad-Abooali/4in-cs2skin-g1/src/configs"
+	"github.com/Milad-Abooali/4in-cs2skin-g1/src/internal/apiapp"
 	"github.com/Milad-Abooali/4in-cs2skin-g1/src/internal/events"
 	"github.com/Milad-Abooali/4in-cs2skin-g1/src/internal/grpcclient"
 	"github.com/Milad-Abooali/4in-cs2skin-g1/src/internal/models"
@@ -1621,6 +1622,14 @@ func archive(battleID int) (models.HandlerOK, models.HandlerError) {
 			return resR, errR
 		}
 
+		// Send Live Winner
+		go sendLiveWinner(
+			int64(userID),
+			strconv.FormatFloat(battle.Cost, 'f', 2, 64),
+			"",
+			strconv.FormatFloat(battle.Summery.Winners.SlotPrizes, 'f', 2, 64),
+		)
+
 		UpdateBattle(battle)
 	}
 
@@ -1726,4 +1735,20 @@ func weightedRandom(prizes map[string]float64, inverse bool) string {
 	}
 
 	return ""
+}
+
+func sendLiveWinner(userID int64, bet string, multiplier string, payout string) bool {
+	apiAppErr := apiapp.InsertWinner(
+		1,
+		time.Now(),
+		userID,
+		bet,
+		multiplier,
+		payout,
+	)
+	if apiAppErr != nil {
+		log.Println("Error:", apiAppErr)
+		return false
+	}
+	return true
 }
