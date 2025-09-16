@@ -19,10 +19,11 @@ type StepResult struct {
 }
 
 type Summery struct {
-	Steps   map[int][]StepResult `json:"steps"` // r1 → [StepResult, StepResult, ...]
-	Winners Team                 `json:"winners"`
-	Prizes  map[string]float64   `json:"prizes"`  // s1 → total prize
-	Jackpot map[string]float64   `json:"jackpot"` // s1 → total prize
+	Steps         map[int][]StepResult `json:"steps"` // r1 → [StepResult, StepResult, ...]
+	Winners       Team                 `json:"winners"`
+	Prizes        map[string]float64   `json:"prizes"`  // s1 → total prize
+	Jackpot       map[string]float64   `json:"jackpot"` // s1 → total prize
+	JackpotWinner string               `json:"jackpotWinner"`
 }
 
 type HE struct {

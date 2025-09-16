@@ -1527,11 +1527,13 @@ func optionActions(battleID int64) {
 			}
 			if utils.InArray(battle.Options, "jackpot") && !utils.InArray(battle.Options, "madness") {
 				winnerSlot := weightedRandom(battle.Summery.Jackpot, false)
+				battle.Summery.JackpotWinner = winnerSlot
 				teamID := battle.Slots[winnerSlot].Team
 				winner = battle.Teams[teamID]
 			}
 			if utils.InArray(battle.Options, "jackpot") && utils.InArray(battle.Options, "madness") {
 				winnerSlot := weightedRandom(battle.Summery.Jackpot, true)
+				battle.Summery.JackpotWinner = winnerSlot
 				teamID := battle.Slots[winnerSlot].Team
 				winner = battle.Teams[teamID]
 			}
