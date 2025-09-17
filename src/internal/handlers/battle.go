@@ -1738,7 +1738,11 @@ func weightedRandom(prizes map[string]float64, inverse bool) string {
 }
 
 func sendLiveWinner(userID int, bet string, multiplier string, payout string) bool {
-	profile, _ := utils.GetUser(userID)
+	profile, err := utils.GetUser(userID)
+
+	if err != nil {
+		return false
+	}
 
 	apiAppErr := apiapp.InsertWinner(
 		1,
