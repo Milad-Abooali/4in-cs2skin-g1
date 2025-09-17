@@ -1629,9 +1629,6 @@ func archive(battleID int) (models.HandlerOK, models.HandlerError) {
 					log.Printf("Recovered in sendLiveWinner: %v\n", r)
 				}
 			}()
-			log.Println(userID)
-			log.Printf("%.2f", battle.Cost)
-			log.Printf("%.2f", battle.Summery.Winners.SlotPrizes)
 			ok := sendLiveWinner(
 				userID,
 				fmt.Sprintf("%.2f", battle.Cost),
@@ -1752,6 +1749,7 @@ func weightedRandom(prizes map[string]float64, inverse bool) string {
 
 func sendLiveWinner(userID int, bet string, multiplier string, payout string) bool {
 	profile, err := utils.GetUser(userID)
+	log.Println(profile)
 
 	if err != nil {
 		log.Println("sendLiveWinner  > ", err)
