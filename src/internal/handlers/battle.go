@@ -1629,11 +1629,14 @@ func archive(battleID int) (models.HandlerOK, models.HandlerError) {
 					log.Printf("Recovered in sendLiveWinner: %v\n", r)
 				}
 			}()
+			log.Println(userID)
+			log.Printf("%.2f", battle.Cost)
+			log.Printf("%.2f", battle.Summery.Winners.SlotPrizes)
 			ok := sendLiveWinner(
 				userID,
-				fmt.Sprintf("%f", battle.Cost),
+				fmt.Sprintf("%.2f", battle.Cost),
 				"",
-				fmt.Sprintf("%f", battle.Summery.Winners.SlotPrizes),
+				fmt.Sprintf("%.2f", battle.Summery.Winners.SlotPrizes),
 			)
 			if ok == false {
 				log.Printf("sendLiveWinner error")
