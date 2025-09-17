@@ -10,14 +10,14 @@ import (
 	"time"
 )
 
-func InsertWinner(gid int, gtime time.Time, userId int64, bet string, multiplier string, payout string) error {
+func InsertWinner(gid int, gtime time.Time, displayName string, bet string, multiplier string, payout string) error {
 	payload := Payload{
-		GID:        gid,
-		GTime:      gtime.Format("2006-01-02 15:04:05"),
-		UserId:     userId,
-		Bet:        bet,
-		Multiplier: multiplier,
-		Payout:     payout,
+		GID:         gid,
+		GTime:       gtime.Format("2006-01-02 15:04:05"),
+		DisplayName: displayName,
+		Bet:         bet,
+		Multiplier:  multiplier,
+		Payout:      payout,
 	}
 
 	jsonData, err := json.Marshal(payload)

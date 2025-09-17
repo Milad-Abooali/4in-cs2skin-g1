@@ -1624,7 +1624,7 @@ func archive(battleID int) (models.HandlerOK, models.HandlerError) {
 
 		// Send Live Winner
 		go sendLiveWinner(
-			int64(userID),
+			userID,
 			strconv.FormatFloat(battle.Cost, 'f', 2, 64),
 			"",
 			strconv.FormatFloat(battle.Summery.Winners.SlotPrizes, 'f', 2, 64),
@@ -1737,11 +1737,13 @@ func weightedRandom(prizes map[string]float64, inverse bool) string {
 	return ""
 }
 
-func sendLiveWinner(userID int64, bet string, multiplier string, payout string) bool {
+func sendLiveWinner(userID int, bet string, multiplier string, payout string) bool {
+	profile, _ := utils.GetUser(userID)
+
 	apiAppErr := apiapp.InsertWinner(
 		1,
 		time.Now(),
-		userID,
+		profile["display_name"].(string),
 		bet,
 		multiplier,
 		payout,
