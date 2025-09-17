@@ -1631,9 +1631,9 @@ func archive(battleID int) (models.HandlerOK, models.HandlerError) {
 			}()
 			ok := sendLiveWinner(
 				userID,
-				strconv.FormatFloat(battle.Cost, 'f', 2, 64),
+				fmt.Sprintf("%f", battle.Cost),
 				"",
-				strconv.FormatFloat(battle.Summery.Winners.SlotPrizes, 'f', 2, 64),
+				fmt.Sprintf("%f", battle.Summery.Winners.SlotPrizes),
 			)
 			if ok == false {
 				log.Printf("sendLiveWinner error")
