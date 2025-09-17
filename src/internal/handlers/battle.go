@@ -1435,7 +1435,7 @@ func Roll(battleID int64, roundKey int) {
 			step := models.StepResult{
 				Slot:   slot,
 				ItemID: int(item["id"].(float64)),
-				Price:  price,
+				Price:  utils.RoundToTwoDigits(price),
 			}
 
 			// reRun
@@ -1464,7 +1464,7 @@ func Roll(battleID int64, roundKey int) {
 					step = models.StepResult{
 						Slot:   slot,
 						ItemID: int(item["id"].(float64)),
-						Price:  price,
+						Price:  utils.RoundToTwoDigits(price),
 					}
 				}
 
