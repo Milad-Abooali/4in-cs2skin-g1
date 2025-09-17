@@ -298,7 +298,6 @@ func NewBattle(data map[string]interface{}) (models.HandlerOK, models.HandlerErr
 			newBattle.Teams = append(newBattle.Teams, models.Team{
 				Slots: []string{key},
 			})
-			log.Println(key, i)
 			SetSlotTeam(newBattle, key, i)
 			i++
 		}
@@ -349,8 +348,6 @@ func NewBattle(data map[string]interface{}) (models.HandlerOK, models.HandlerErr
 		SetSlotTeam(newBattle, "s5", 1)
 		SetSlotTeam(newBattle, "s6", 1)
 	}
-
-	log.Println(newBattle.Slots)
 
 	AddLog(newBattle, "create", int64(userID))
 
@@ -1630,7 +1627,7 @@ func archive(battleID int) (models.HandlerOK, models.HandlerError) {
 				}
 			}()
 			ok := sendLiveWinner(
-				userID,
+				battle.Slots[v].DisplayName,
 				fmt.Sprintf("%.2f", battle.Cost),
 				"",
 				fmt.Sprintf("%.2f", battle.Summery.Winners.SlotPrizes),
@@ -1747,15 +1744,7 @@ func weightedRandom(prizes map[string]float64, inverse bool) string {
 	return ""
 }
 
-func sendLiveWinner(userID int, bet string, multiplier string, payout string) bool {
-	resp, err := utils.GetUser(userID)
-	if err != nil {
-		log.Println("sendLiveWinner ! ", err)
-		return false
-	}
-	userData := resp["data"].(map[string]interface{})
-	profile := userData["profile"].(map[string]interface{})
-	displayName := profile["display_name"].(string)
+func sendLiveWinner(displayName string, bet string, multiplier string, payout string) bool {
 	apiAppErr := apiapp.InsertWinner(
 		1,
 		time.Now(),
