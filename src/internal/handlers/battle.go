@@ -1748,6 +1748,8 @@ func sendLiveWinner(userID int, bet string, multiplier string, payout string) bo
 		multiplier,
 		payout,
 	)
+	log.Println("apiAppErr:", apiAppErr)
+
 	if apiAppErr != nil {
 		log.Println("Error:", apiAppErr)
 		return false
