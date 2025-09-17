@@ -10,11 +10,11 @@ import (
 	"time"
 )
 
-func InsertWinner(gid int, gtime time.Time, userID int64, bet string, multiplier string, payout string) error {
+func InsertWinner(gid int, gtime time.Time, userId int64, bet string, multiplier string, payout string) error {
 	payload := Payload{
 		GID:        gid,
 		GTime:      gtime.Format("2006-01-02 15:04:05"),
-		Username:   userID,
+		UserId:     userId,
 		Bet:        bet,
 		Multiplier: multiplier,
 		Payout:     payout,
