@@ -1751,6 +1751,7 @@ func sendLiveWinner(userID int, bet string, multiplier string, payout string) bo
 	profile, err := utils.GetUser(userID)
 
 	if err != nil {
+		log.Println("sendLiveWinner  > ", err)
 		return false
 	}
 
