@@ -1623,12 +1623,22 @@ func archive(battleID int) (models.HandlerOK, models.HandlerError) {
 		}
 
 		// Send Live Winner
-		go sendLiveWinner(
-			userID,
-			strconv.FormatFloat(battle.Cost, 'f', 2, 64),
-			"",
-			strconv.FormatFloat(battle.Summery.Winners.SlotPrizes, 'f', 2, 64),
-		)
+		go func() {
+			defer func() {
+				if r := recover(); r != nil {
+					log.Printf("Recovered in sendLiveWinner: %v\n", r)
+				}
+			}()
+			ok := sendLiveWinner(
+				userID,
+				strconv.FormatFloat(battle.Cost, 'f', 2, 64),
+				"",
+				strconv.FormatFloat(battle.Summery.Winners.SlotPrizes, 'f', 2, 64),
+			)
+			if ok == false {
+				log.Printf("sendLiveWinner error")
+			}
+		}()
 
 		UpdateBattle(battle)
 	}
