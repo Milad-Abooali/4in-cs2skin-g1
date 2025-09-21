@@ -54,3 +54,31 @@ func ValidateAdminKey(data map[string]interface{}) (string, error) {
 	}
 	return keyStr, nil
 }
+
+func CalculatePercentages(parts []float64, total float64) []float64 {
+	if total == 0 {
+		return make([]float64, len(parts))
+	}
+	percentages := make([]float64, len(parts))
+	for i, part := range parts {
+		percentages[i] = (part / total) * 100
+	}
+	rounded := make([]float64, len(parts))
+	var roundedSum float64
+	for i, p := range percentages {
+		rounded[i] = math.Round(p*100) / 100
+		roundedSum += rounded[i]
+	}
+	err := 100 - roundedSum
+	if err != 0 {
+		maxIndex := 0
+		for i := 1; i < len(percentages); i++ {
+			if percentages[i] > percentages[maxIndex] {
+				maxIndex = i
+			}
+		}
+		rounded[maxIndex] += err
+		rounded[maxIndex] = math.Round(rounded[maxIndex]*100) / 100
+	}
+	return rounded
+}

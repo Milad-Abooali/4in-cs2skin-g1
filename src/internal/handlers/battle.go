@@ -1347,6 +1347,31 @@ func Roll(battleID int64, roundKey int) {
 		}
 	} else {
 
+		// Count Last Roll Percentages
+		if roundKey > 0 {
+
+			var (
+				parts []float64
+				total float64
+			)
+
+			lastStep := battle.Summery.Steps[roundKey-1]
+			if lastStep != nil {
+
+				for _, slot := range lastStep {
+					total += slot.Price
+					parts = append(parts, slot.Price)
+				}
+				result := utils.CalculatePercentages(parts, total)
+
+				for j := range lastStep {
+					battle.Summery.Steps[roundKey-1][j].Percentage = result[j]
+				}
+
+			}
+
+		}
+
 		// Last Roll
 		if roundKey >= len(battle.Cases) {
 			battle.Status = fmt.Sprintf("Rolled")

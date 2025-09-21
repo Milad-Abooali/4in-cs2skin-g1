@@ -13,9 +13,10 @@ type Slot struct {
 }
 
 type StepResult struct {
-	Slot   string  `json:"slot"`   // s1, s2, ...
-	ItemID int     `json:"itemId"` // ID
-	Price  float64 `json:"price"`
+	Slot       string  `json:"slot"`   // s1, s2, ...
+	ItemID     int     `json:"itemId"` // ID
+	Price      float64 `json:"price"`
+	Percentage float64 `json:"percentage"`
 }
 
 type Summery struct {
