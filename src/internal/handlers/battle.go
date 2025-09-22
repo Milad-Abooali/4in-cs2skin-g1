@@ -1326,6 +1326,7 @@ func GenerateShortBattleHash(battleID string) string {
 
 // Roll - Battle Helper
 func Roll(battleID int64, roundKey int) {
+	time.Sleep(3 * time.Second)
 
 	if DbBots == nil || len(DbBots.Values) == 0 {
 		FillBots()
