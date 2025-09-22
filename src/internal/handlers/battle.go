@@ -642,6 +642,7 @@ func Join(data map[string]interface{}) (models.HandlerOK, models.HandlerError) {
 	return resR, errR
 }
 
+// ChangeSeat - Handler
 func ChangeSeat(data map[string]interface{}) (models.HandlerOK, models.HandlerError) {
 	var (
 		errR models.HandlerError
