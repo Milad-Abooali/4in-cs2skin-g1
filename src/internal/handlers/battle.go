@@ -759,6 +759,7 @@ func ChangeSeat(data map[string]interface{}) (models.HandlerOK, models.HandlerEr
 			return resR, errV
 		}
 		go func(bid int) {
+			time.Sleep(1 * time.Second)
 			Roll(int64(battle.ID), 0)
 		}(battle.ID)
 	} else {
@@ -1329,8 +1330,6 @@ func GenerateShortBattleHash(battleID string) string {
 
 // Roll - Battle Helper
 func Roll(battleID int64, roundKey int) {
-	time.Sleep(3 * time.Second)
-
 	if DbBots == nil || len(DbBots.Values) == 0 {
 		FillBots()
 	}
