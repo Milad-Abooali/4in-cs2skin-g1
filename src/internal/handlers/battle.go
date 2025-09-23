@@ -195,7 +195,7 @@ func NewBattle(data map[string]interface{}) (models.HandlerOK, models.HandlerErr
 		return resR, errR
 	}
 
-	// Fit Slots
+	// Fit Teams Slots
 	var slots int
 	switch data["playerType"] {
 	case "1v1":
