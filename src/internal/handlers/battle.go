@@ -290,64 +290,8 @@ func NewBattle(data map[string]interface{}) (models.HandlerOK, models.HandlerErr
 		newBattle.PrivateKey = PrivateKey
 	}
 
-	// Winner Team
-	switch newBattle.PlayerType {
-	case "1v1", "1v1v1", "1v1v1v1", "1v6":
-		var i = 0
-		for key := range newBattle.Slots {
-			newBattle.Teams = append(newBattle.Teams, models.Team{
-				Slots: []string{key},
-			})
-			SetSlotTeam(newBattle, key, i)
-			i++
-		}
-	case "2v2":
-		newBattle.Teams = append(newBattle.Teams, models.Team{
-			Slots: []string{"s1", "s2"},
-		})
-		SetSlotTeam(newBattle, "s1", 0)
-		SetSlotTeam(newBattle, "s2", 0)
-
-		newBattle.Teams = append(newBattle.Teams, models.Team{
-			Slots: []string{"s3", "s4"},
-		})
-		SetSlotTeam(newBattle, "s3", 1)
-		SetSlotTeam(newBattle, "s4", 1)
-
-	case "2v2v2":
-		newBattle.Teams = append(newBattle.Teams, models.Team{
-			Slots: []string{"s1", "s2"},
-		})
-		SetSlotTeam(newBattle, "s1", 0)
-		SetSlotTeam(newBattle, "s2", 0)
-
-		newBattle.Teams = append(newBattle.Teams, models.Team{
-			Slots: []string{"s3", "s4"},
-		})
-		SetSlotTeam(newBattle, "s3", 1)
-		SetSlotTeam(newBattle, "s4", 1)
-
-		newBattle.Teams = append(newBattle.Teams, models.Team{
-			Slots: []string{"s5", "s6"},
-		})
-		SetSlotTeam(newBattle, "s5", 2)
-		SetSlotTeam(newBattle, "s6", 2)
-
-	case "3v3":
-		newBattle.Teams = append(newBattle.Teams, models.Team{
-			Slots: []string{"s1", "s2", "s3"},
-		})
-		SetSlotTeam(newBattle, "s1", 0)
-		SetSlotTeam(newBattle, "s2", 0)
-		SetSlotTeam(newBattle, "s3", 0)
-
-		newBattle.Teams = append(newBattle.Teams, models.Team{
-			Slots: []string{"s4", "s5", "s6"},
-		})
-		SetSlotTeam(newBattle, "s4", 1)
-		SetSlotTeam(newBattle, "s5", 1)
-		SetSlotTeam(newBattle, "s6", 1)
-	}
+	// Teams
+	NormalizeTeams(newBattle)
 
 	AddLog(newBattle, "create", int64(userID))
 
@@ -1799,28 +1743,66 @@ func sendLiveWinner(displayName string, bet string, multiplier string, payout st
 	return true
 }
 
-// NormalizeTeams
 func NormalizeTeams(b *models.Battle) {
-	newTeams := []models.Team{}
-	keys := []string{"s1", "s2", "s3", "s4", "s5", "s6"}
-	for _, key := range keys {
-		slot, ok := b.Slots[key]
-		if !ok {
-			continue
-		}
-		if slot.Type != "Empty" && slot.ID != 0 {
-			team := models.Team{
-				Slots:       []string{key},
-				RolWin:      0,
-				SlotPrizes:  0,
-				TotalPrizes: 0,
-			}
-			newTeams = append(newTeams, team)
+	// reset
+	b.Teams = nil
 
-			if slot.Team == 0 {
-				log.Printf("Team for %s is empty ", key)
-			}
+	switch b.PlayerType {
+	case "1v1", "1v1v1", "1v1v1v1", "1v6":
+		var i = 0
+		for key := range b.Slots {
+			b.Teams = append(b.Teams, models.Team{
+				Slots: []string{key},
+			})
+			SetSlotTeam(b, key, i)
+			i++
 		}
+	case "2v2":
+		b.Teams = append(b.Teams, models.Team{
+			Slots: []string{"s1", "s2"},
+		})
+		SetSlotTeam(b, "s1", 0)
+		SetSlotTeam(b, "s2", 0)
+
+		b.Teams = append(b.Teams, models.Team{
+			Slots: []string{"s3", "s4"},
+		})
+		SetSlotTeam(b, "s3", 1)
+		SetSlotTeam(b, "s4", 1)
+
+	case "2v2v2":
+		b.Teams = append(b.Teams, models.Team{
+			Slots: []string{"s1", "s2"},
+		})
+		SetSlotTeam(b, "s1", 0)
+		SetSlotTeam(b, "s2", 0)
+
+		b.Teams = append(b.Teams, models.Team{
+			Slots: []string{"s3", "s4"},
+		})
+		SetSlotTeam(b, "s3", 1)
+		SetSlotTeam(b, "s4", 1)
+
+		b.Teams = append(b.Teams, models.Team{
+			Slots: []string{"s5", "s6"},
+		})
+		SetSlotTeam(b, "s5", 2)
+		SetSlotTeam(b, "s6", 2)
+
+	case "3v3":
+		b.Teams = append(b.Teams, models.Team{
+			Slots: []string{"s1", "s2", "s3"},
+		})
+		SetSlotTeam(b, "s1", 0)
+		SetSlotTeam(b, "s2", 0)
+		SetSlotTeam(b, "s3", 0)
+
+		b.Teams = append(b.Teams, models.Team{
+			Slots: []string{"s4", "s5", "s6"},
+		})
+		SetSlotTeam(b, "s4", 1)
+		SetSlotTeam(b, "s5", 1)
+		SetSlotTeam(b, "s6", 1)
 	}
-	b.Teams = newTeams
+	AddLog(b, "Normalize Teams", 0)
 }
