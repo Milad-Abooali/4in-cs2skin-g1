@@ -691,6 +691,10 @@ func ChangeSeat(data map[string]interface{}) (models.HandlerOK, models.HandlerEr
 		return resR, errR
 	}
 
+	// Lock Battle
+	battle.MU.Lock()
+	defer battle.MU.Unlock()
+
 	if battle.StatusCode > 0 {
 		errR.Type = "GAME_IS_LOCKED"
 		errR.Code = 5007

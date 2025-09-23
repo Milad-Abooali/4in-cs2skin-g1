@@ -1,6 +1,7 @@
 package models
 
 import (
+	"sync"
 	"time"
 )
 
@@ -56,6 +57,7 @@ type Battle struct {
 	Logs       []BattleLog            `json:"logs"`
 	PrivateKey string                 `json:"privateKey"`
 	Teams      []Team                 `json:"teams"`
+	MU         sync.Mutex             `json:"-"`
 }
 
 type BattleLog struct {
