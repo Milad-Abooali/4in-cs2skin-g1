@@ -737,11 +737,13 @@ func ChangeSeat(data map[string]interface{}) (models.HandlerOK, models.HandlerEr
 	AddClientSeed(battle.PFair, slotK, clientSeed)
 
 	// Clear Old Slot
+	team = battle.Slots[oldSlot].Team
 	battle.Slots[oldSlot] = models.Slot{
 		ID:          0,
 		DisplayName: "",
 		ClientSeed:  "",
 		Type:        "Empty",
+		Team:        team,
 	}
 	RemoveClientSeed(battle.PFair, oldSlot)
 
