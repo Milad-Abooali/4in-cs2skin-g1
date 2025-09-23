@@ -765,7 +765,6 @@ func ChangeSeat(data map[string]interface{}) (models.HandlerOK, models.HandlerEr
 			return resR, errV
 		}
 		go func(bid int) {
-			time.Sleep(1 * time.Second)
 			Roll(int64(battle.ID), 0)
 		}(battle.ID)
 	} else {
@@ -1349,6 +1348,12 @@ func Roll(battleID int64, roundKey int) {
 		return
 	}
 
+	// Normalize Teams
+	if roundKey == 0 {
+		time.Sleep(250 * time.Millisecond)
+		NormalizeTeams(battle)
+	}
+
 	// Check if roll has already done
 	if steps, exists := battle.Summery.Steps[roundKey]; exists && len(steps) > 0 {
 		if configs.Debug {
@@ -1792,4 +1797,30 @@ func sendLiveWinner(displayName string, bet string, multiplier string, payout st
 		return false
 	}
 	return true
+}
+
+// NormalizeTeams
+func NormalizeTeams(b *models.Battle) {
+	newTeams := []models.Team{}
+	keys := []string{"s1", "s2", "s3", "s4", "s5", "s6"}
+	for _, key := range keys {
+		slot, ok := b.Slots[key]
+		if !ok {
+			continue
+		}
+		if slot.Type != "Empty" && slot.ID != 0 {
+			team := models.Team{
+				Slots:       []string{key},
+				RolWin:      0,
+				SlotPrizes:  0,
+				TotalPrizes: 0,
+			}
+			newTeams = append(newTeams, team)
+
+			if slot.Team == 0 {
+				log.Printf("Team for %s is empty ", key)
+			}
+		}
+	}
+	b.Teams = newTeams
 }
