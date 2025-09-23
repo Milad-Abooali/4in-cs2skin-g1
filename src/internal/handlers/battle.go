@@ -705,15 +705,7 @@ func ChangeSeat(data map[string]interface{}) (models.HandlerOK, models.HandlerEr
 			break
 		}
 	}
-	fmt.Println("Slot key for ID 54:", oldSlot)
-
-	// Clear Slot
-	battle.Slots[oldSlot] = models.Slot{
-		ID:          0,
-		DisplayName: "",
-		ClientSeed:  "",
-		Type:        "Empty",
-	}
+	log.Printf("Old slot key for userID %d : %s:", userID, oldSlot)
 
 	// Check Slot
 	slotId, vErr, ok := validate.RequireInt(data, "slotId")
@@ -726,6 +718,7 @@ func ChangeSeat(data map[string]interface{}) (models.HandlerOK, models.HandlerEr
 		errR.Code = 1027
 		return resR, errR
 	}
+	log.Printf("Move to %s:", slotK)
 
 	// Join New Slot
 	clientSeed := utils.MD5UserID(userID)
@@ -738,6 +731,15 @@ func ChangeSeat(data map[string]interface{}) (models.HandlerOK, models.HandlerEr
 		Team:        team,
 	}
 	AddClientSeed(battle.PFair, slotK, clientSeed)
+
+	// Clear Old Slot
+	battle.Slots[oldSlot] = models.Slot{
+		ID:          0,
+		DisplayName: "",
+		ClientSeed:  "",
+		Type:        "Empty",
+	}
+	RemoveClientSeed(battle.PFair, oldSlot)
 
 	// update battle
 	AddLog(battle, "changeSeat", int64(userID))
