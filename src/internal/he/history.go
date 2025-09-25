@@ -13,6 +13,8 @@ func GetAvgHE(gameTable string, limit int) (float64, bool) {
 		limit,
 	)
 	res, err := grpcclient.SendQuery(query)
+	log.Println(res)
+
 	if err != nil || res == nil || res.Status != "ok" {
 		return 0, false
 	}
