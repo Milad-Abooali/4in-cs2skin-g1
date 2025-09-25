@@ -10,6 +10,7 @@ func GetAvgHE(gameTable string, limit int) (float64, bool) {
 	query := fmt.Sprintf(
 		`SELECT AVG(cb.he) AS avg_he FROM %s cb JOIN ( SELECT id FROM %s WHERE is_live = 0 AND income > 0 ORDER BY created_at DESC LIMIT %d ) ids ON cb.id = ids.id`,
 		gameTable,
+		gameTable,
 		limit,
 	)
 	res, err := grpcclient.SendQuery(query)
