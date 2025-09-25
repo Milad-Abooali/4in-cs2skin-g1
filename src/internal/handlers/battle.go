@@ -544,6 +544,9 @@ func Join(data map[string]interface{}) (models.HandlerOK, models.HandlerError) {
 	}
 
 	// HE Tracks
+	if battle.Tracker == nil {
+		battle.Tracker = he.NewTracker()
+	}
 	battle.Tracker.AddIncome(battle.Cost)
 
 	// Join Battle

@@ -6,7 +6,9 @@ import (
 	"encoding/binary"
 	"encoding/hex"
 	"fmt"
+	"github.com/Milad-Abooali/4in-cs2skin-g1/src/internal/he"
 	"log"
+	"strconv"
 )
 
 // FairRand generates a deterministic "random" number based on server seed, client seed and nonce.
@@ -20,26 +22,42 @@ func FairRand(serverSeed, clientSeed string, nonce, max int) int {
 
 func PickItem(caseData map[string]interface{}, serverSeed, clientSeed string, nonce int) map[string]interface{} {
 
-	// Generate provably fair random number 0..1,000,000
-	r := FairRand(serverSeed, clientSeed, nonce, 1_000_001)
+	selectedItem := selectItem(caseData, serverSeed, clientSeed, nonce)
+	priceStr, _ := selectedItem["price"].(string)
+	price, _ := strconv.ParseFloat(priceStr, 64)
 
-	itemsRaw, ok := caseData["items"].(map[int]map[string]interface{})
-	if !ok {
-		log.Println("PickItem > no items")
-		return nil
+	casePricestr, _ := caseData["price"].(string)
+	casePrice, _ := strconv.ParseFloat(casePricestr, 64)
+
+	HE, _ := he.GetAvgHE("g1_game", 30)
+	if HE > 100 && HE < 105 {
+		if price > casePrice {
+			for {
+				selectedItem = selectItem(caseData, serverSeed, clientSeed, nonce)
+				priceStr, _ = selectedItem["price"].(string)
+				price, _ = strconv.ParseFloat(priceStr, 64)
+				if price <= casePrice {
+					break
+				}
+				nonce++
+			}
+		}
 	}
-
-	// Select matching item
-	for _, item := range itemsRaw {
-		minR, _ := item["min_rand"].(float64)
-		maxR, _ := item["max_rand"].(float64)
-
-		if float64(r) >= minR && float64(r) <= maxR {
-			return item
+	if HE < 99.99 {
+		if price > casePrice/2 {
+			for {
+				selectedItem = selectItem(caseData, serverSeed, clientSeed, nonce)
+				priceStr, _ = selectedItem["price"].(string)
+				price, _ = strconv.ParseFloat(priceStr, 64)
+				if price <= casePrice/2 {
+					break
+				}
+				nonce++
+			}
 		}
 	}
 
-	return nil
+	return selectedItem
 }
 
 func GenerateServerSeed() (string, string) {
@@ -51,4 +69,24 @@ func GenerateServerSeed() (string, string) {
 	seed := hex.EncodeToString(bytes)
 	hash := sha256.Sum256([]byte(seed))
 	return seed, hex.EncodeToString(hash[:]) // (serverSeed, serverSeedHash)
+}
+
+func selectItem(caseData map[string]interface{}, serverSeed, clientSeed string, nonce int) map[string]interface{} {
+	// Generate provably fair random number 0..1,000,000
+	r := FairRand(serverSeed, clientSeed, nonce, 1_000_001)
+	itemsRaw, ok := caseData["items"].(map[int]map[string]interface{})
+	if !ok {
+		log.Println("PickItem > no items")
+		return nil
+	}
+	// Select matching item
+	for _, item := range itemsRaw {
+		minR, _ := item["min_rand"].(float64)
+		maxR, _ := item["max_rand"].(float64)
+
+		if float64(r) >= minR && float64(r) <= maxR {
+			return item
+		}
+	}
+	return nil
 }

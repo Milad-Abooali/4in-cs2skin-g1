@@ -87,7 +87,8 @@ func FillCaseImpact() (map[int]grpcclient.CaseWithItems, models.HandlerError) {
    		ci.rarity,
    		ci.color,
    		ir.market_hash_name,
-        "Emerlad" as item_cat FROM case_items ci LEFT JOIN item_repo ir ON ci.item_id = ir.id`)
+   		ir.category,
+   		ir.wear FROM case_items ci LEFT JOIN g1_items ir ON ci.item_id = ir.id`)
 	// gRPC Call
 	res, err = grpcclient.SendQuery(query)
 	if err != nil || res == nil || res.Status != "ok" {
