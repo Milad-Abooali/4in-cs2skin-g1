@@ -30,7 +30,7 @@ func PickItem(caseData map[string]interface{}, serverSeed, clientSeed string, no
 	casePrice, _ := strconv.ParseFloat(casePricestr, 64)
 
 	HE, _ := he.GetAvgHE("g1_game", 30)
-	if HE > 100 && HE < 105 {
+	if HE > 5 && HE < 8 {
 		if price > casePrice {
 			for {
 				selectedItem = selectItem(caseData, serverSeed, clientSeed, nonce)
@@ -43,7 +43,8 @@ func PickItem(caseData map[string]interface{}, serverSeed, clientSeed string, no
 			}
 		}
 	}
-	if HE < 99.99 {
+
+	if HE < 5 {
 		if price > casePrice/2 {
 			for {
 				selectedItem = selectItem(caseData, serverSeed, clientSeed, nonce)
