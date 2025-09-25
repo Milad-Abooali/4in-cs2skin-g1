@@ -38,7 +38,6 @@ func PickItem(HE float64, caseData map[string]interface{}, serverSeed, clientSee
 				selectedItem = selectItem(caseData, serverSeed, clientSeed, nonce)
 				priceStr, _ = selectedItem["price"].(string)
 				price, _ = strconv.ParseFloat(priceStr, 64)
-				log.Println("price_item", price, casePrice)
 				if price <= casePrice {
 					break
 				}
@@ -55,7 +54,6 @@ func PickItem(HE float64, caseData map[string]interface{}, serverSeed, clientSee
 				selectedItem = selectItem(caseData, serverSeed, clientSeed, nonce)
 				priceStr, _ = selectedItem["price"].(string)
 				price, _ = strconv.ParseFloat(priceStr, 64)
-				log.Println("price_item", price, casePrice)
 				if price <= casePrice {
 					break
 				}

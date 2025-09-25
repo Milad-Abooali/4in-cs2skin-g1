@@ -1424,7 +1424,6 @@ func Roll(battleID int64, roundKey int) {
 			}
 
 			if item == nil {
-				log.Println("No item picked On Case:", caseData)
 
 				for {
 					nonce += 7
@@ -1468,7 +1467,6 @@ func Roll(battleID int64, roundKey int) {
 					}
 
 					if item == nil {
-						log.Println("No item picked On Case:", caseData)
 
 						for {
 							nonce += 7
