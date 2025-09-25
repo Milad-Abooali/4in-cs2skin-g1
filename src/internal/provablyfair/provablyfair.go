@@ -30,6 +30,12 @@ func PickItem(caseData map[string]interface{}, serverSeed, clientSeed string, no
 	casePrice, _ := strconv.ParseFloat(casePricestr, 64)
 
 	HE, _ := he.GetAvgHE("g1_game", 30)
+	log.Printf("HE: %f", HE)
+
+	if HE > 8 {
+		return selectedItem
+	}
+
 	if HE > 5 && HE < 8 {
 		if price > casePrice {
 			for {
@@ -58,7 +64,7 @@ func PickItem(caseData map[string]interface{}, serverSeed, clientSeed string, no
 		}
 	}
 
-	return selectedItem
+	return nil
 }
 
 func GenerateServerSeed() (string, string) {
