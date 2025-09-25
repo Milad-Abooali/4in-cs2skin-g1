@@ -29,7 +29,8 @@ func PickItem(caseData map[string]interface{}, serverSeed, clientSeed string, no
 	casePricestr, _ := caseData["price"].(string)
 	casePrice, _ := strconv.ParseFloat(casePricestr, 64)
 
-	HE, _ := he.GetAvgHE("g1_game", 30)
+	HE, _ := he.GetAvgHE("g1_games", 30)
+
 	log.Printf("HE: %f", HE)
 
 	if HE > 8 || HE == 0 {
