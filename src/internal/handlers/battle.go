@@ -253,7 +253,7 @@ func NewBattle(data map[string]interface{}) (models.HandlerOK, models.HandlerErr
 
 	// Sanitize and build query
 	query := fmt.Sprintf(
-		`INSERT INTO g1_battles (server_seed,server_seed_hash, battle) 
+		`INSERT INTO g1_games (server_seed,server_seed_hash, game) 
 				VALUES ('%s', '%s', '%s')`,
 		serverSeed,
 		serverSeedHash,
@@ -743,7 +743,7 @@ func GetBattleHistory(data map[string]interface{}) (models.HandlerOK, models.Han
 
 	// Sanitize and build query
 	query := fmt.Sprintf(
-		`SELECT battle FROM g1_battles WHERE id = %d`,
+		`SELECT game FROM g1_games WHERE id = %d`,
 		battleID,
 	)
 
@@ -786,7 +786,7 @@ func GetBattleHistory(data map[string]interface{}) (models.HandlerOK, models.Han
 
 	fields := row.GetFields()
 
-	battleVal := fields["battle"]
+	battleVal := fields["game"]
 	battleStr := battleVal.GetStringValue()
 
 	var battleMap models.Battle
@@ -856,7 +856,7 @@ func GetBattleAdmin(data map[string]interface{}) (models.HandlerOK, models.Handl
 
 	// Sanitize and build query
 	query := fmt.Sprintf(
-		`SELECT battle FROM g1_battles WHERE id = %d`,
+		`SELECT game FROM g1_games WHERE id = %d`,
 		battleID,
 	)
 
@@ -899,7 +899,7 @@ func GetBattleAdmin(data map[string]interface{}) (models.HandlerOK, models.Handl
 
 	fields := row.GetFields()
 
-	battleVal := fields["battle"]
+	battleVal := fields["game"]
 	battleStr := battleVal.GetStringValue()
 
 	var battleMap map[string]interface{}
@@ -1053,7 +1053,7 @@ func UpdateBattle(battle *models.Battle) (bool, models.HandlerError) {
 	}
 	// Sanitize and build query
 	query := fmt.Sprintf(
-		`Update g1_battles SET battle = '%s' WHERE id = %d`,
+		`Update g1_games SET game = '%s' WHERE id = %d`,
 		string(battleJSON),
 		bID,
 	)
@@ -1121,7 +1121,7 @@ func FillBattleIndex() (bool, models.HandlerError) {
 	log.Println("Fill BattleIndex..")
 
 	// Sanitize and build query
-	query := `SELECT battle FROM g1_battles WHERE is_live=1`
+	query := `SELECT game FROM g1_games WHERE is_live=1`
 
 	// gRPC Call
 	res, err := grpcclient.SendQuery(query)
@@ -1147,7 +1147,7 @@ func FillBattleIndex() (bool, models.HandlerError) {
 
 	for idx, row := range dbBattles.Values {
 		structRow := row.GetStructValue()
-		battleJSON := structRow.Fields["battle"].GetStringValue() // JSON string
+		battleJSON := structRow.Fields["game"].GetStringValue() // JSON string
 
 		var b models.Battle
 		err := json.Unmarshal([]byte(battleJSON), &b)
@@ -1629,7 +1629,7 @@ func archive(battleID int) (models.HandlerOK, models.HandlerError) {
 
 	// Sanitize and build query
 	query := fmt.Sprintf(
-		`Update g1_battles SET is_live = 0 WHERE id = %d`,
+		`Update g1_games SET is_live = 0 WHERE id = %d`,
 		battle.ID,
 	)
 
