@@ -1,0 +1,27 @@
+package he
+
+import (
+	"fmt"
+	"github.com/Milad-Abooali/4in-cs2skin-g1/src/internal/grpcclient"
+	"log"
+)
+
+func GetAvgHE(gameTable string, limit int) (float64, bool) {
+	query := fmt.Sprintf(
+		`SELECT AVG(he) AS avg_he FROM ( SELECT he FROM %s WHERE is_live=0 AND income>0 ORDER BY created_at DESC LIMIT %d ) t;`,
+		gameTable,
+		limit,
+	)
+	res, err := grpcclient.SendQuery(query)
+	if err != nil || res == nil || res.Status != "ok" {
+		return 0, false
+	}
+	dataDB := res.Data.GetFields()
+	exist := dataDB["count"].GetNumberValue()
+	if exist == 0 {
+		return 0, false
+	}
+	DbCaseItems := dataDB["rows"].GetListValue()
+	log.Println(DbCaseItems)
+	return 0, true
+}

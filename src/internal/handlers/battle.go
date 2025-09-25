@@ -41,6 +41,9 @@ func NewBattle(data map[string]interface{}) (models.HandlerOK, models.HandlerErr
 		FillCaseImpact()
 	}
 
+	// Test
+	he.GetAvgHE("g1_games", 10)
+
 	// Check Token
 	userJWT, vErr, ok := validate.RequireString(data, "token", false)
 	if !ok {
@@ -1669,11 +1672,10 @@ func archive(battleID int) (models.HandlerOK, models.HandlerError) {
 	// Emit | heartbeat
 	events.Emit("all", "heartbeat", ClientBattleIndex(BattleIndex))
 
-	// Wait for animation
-
 	// HE Tracks
 	battle.Tracker.Save("g1_games", battle.ID)
 
+	// Keep on Index
 	time.Sleep(600 * time.Second)
 
 	battle.Status = "Archived"
