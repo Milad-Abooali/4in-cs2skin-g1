@@ -3,6 +3,7 @@ package he
 import (
 	"fmt"
 	"github.com/Milad-Abooali/4in-cs2skin-g1/src/internal/grpcclient"
+	"log"
 )
 
 // Tracker keeps track of financial stats for a single game (income, expense, ROI, HE).
@@ -67,8 +68,10 @@ func (t *Tracker) Save(gameTable string, gameID int) {
 		t.HE,
 		gameID,
 	)
+	log.Println(query)
 
 	grpcclient.SendQuery(query)
+
 }
 
 func _Example() {
