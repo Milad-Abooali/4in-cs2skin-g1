@@ -23,7 +23,7 @@ func GetAvgHE(gameTable string, limit int) (float64, bool) {
 	if exist == 0 {
 		return 0, false
 	}
-	DbCaseItems := dataDB["rows"].GetListValue().GetValues()[0].GetStructValue().GetFields()
+	DbCaseItems := dataDB["rows"].GetListValue().GetValues()[0].GetStructValue().GetFields()["avg_he"].GetStringValue()
 	log.Println(DbCaseItems)
 	return 0, true
 }
