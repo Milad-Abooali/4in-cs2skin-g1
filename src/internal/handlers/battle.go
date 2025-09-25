@@ -1420,7 +1420,20 @@ func Roll(battleID int64, roundKey int) {
 
 			if item == nil {
 				log.Println("No item picked On Case:", caseData)
-				continue
+
+				for {
+					nonce += 7
+					item = provablyfair.PickItem(
+						caseData,
+						battle.PFair["serverSeed"].(string),
+						clientSeed,
+						nonce,
+					)
+					if item != nil {
+						break
+					}
+				}
+
 			}
 
 			priceStr, _ := item["price"].(string)
@@ -1449,7 +1462,20 @@ func Roll(battleID int64, roundKey int) {
 
 					if item == nil {
 						log.Println("No item picked On Case:", caseData)
-						continue
+
+						for {
+							nonce += 7
+							item = provablyfair.PickItem(
+								caseData,
+								battle.PFair["serverSeed"].(string),
+								clientSeed,
+								nonce,
+							)
+							if item != nil {
+								break
+							}
+						}
+
 					}
 
 					priceStr, _ = item["price"].(string)
