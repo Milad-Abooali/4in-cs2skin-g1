@@ -1,6 +1,7 @@
 package models
 
 import (
+	"github.com/Milad-Abooali/4in-cs2skin-g1/src/internal/he"
 	"sync"
 	"time"
 )
@@ -58,6 +59,7 @@ type Battle struct {
 	PrivateKey string                 `json:"privateKey"`
 	Teams      []Team                 `json:"teams"`
 	MU         sync.Mutex             `json:"-"`
+	Tracker    *he.Tracker            `json:"-"`
 }
 
 type BattleLog struct {

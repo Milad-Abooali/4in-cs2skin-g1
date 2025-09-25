@@ -10,6 +10,7 @@ import (
 	"github.com/Milad-Abooali/4in-cs2skin-g1/src/internal/apiapp"
 	"github.com/Milad-Abooali/4in-cs2skin-g1/src/internal/events"
 	"github.com/Milad-Abooali/4in-cs2skin-g1/src/internal/grpcclient"
+	"github.com/Milad-Abooali/4in-cs2skin-g1/src/internal/he"
 	"github.com/Milad-Abooali/4in-cs2skin-g1/src/internal/models"
 	"github.com/Milad-Abooali/4in-cs2skin-g1/src/internal/provablyfair"
 	"github.com/Milad-Abooali/4in-cs2skin-g1/src/internal/validate"
@@ -85,6 +86,7 @@ func NewBattle(data map[string]interface{}) (models.HandlerOK, models.HandlerErr
 		PFair:      make(map[string]interface{}),
 		CreatedAt:  time.Now(),
 		UpdatedAt:  time.Now(),
+		Tracker:    he.NewTracker(),
 	}
 
 	// Cases
@@ -194,6 +196,9 @@ func NewBattle(data map[string]interface{}) (models.HandlerOK, models.HandlerErr
 		}
 		return resR, errR
 	}
+
+	// HE Tracks
+	newBattle.Tracker.AddIncome(newBattle.Cost)
 
 	// Fit Teams Slots
 	var slots int
@@ -534,6 +539,9 @@ func Join(data map[string]interface{}) (models.HandlerOK, models.HandlerError) {
 		}
 		return resR, errR
 	}
+
+	// HE Tracks
+	battle.Tracker.AddIncome(battle.Cost)
 
 	// Join Battle
 	clientSeed := utils.MD5UserID(userID)
@@ -1602,6 +1610,9 @@ func archive(battleID int) (models.HandlerOK, models.HandlerError) {
 			return resR, errR
 		}
 
+		// HE Tracks
+		battle.Tracker.AddExpense(battle.Summery.Winners.SlotPrizes)
+
 		// Send Live Winner
 		go func() {
 			defer func() {
@@ -1664,6 +1675,9 @@ func archive(battleID int) (models.HandlerOK, models.HandlerError) {
 	battle.Status = "Archived"
 	battle.StatusCode = -1
 	UpdateBattle(battle)
+
+	// HE Tracks
+	battle.Tracker.Save("g1_games", battle.ID)
 
 	// Drop Battle from Index
 	go dropBattle(battle.ID, 0)
