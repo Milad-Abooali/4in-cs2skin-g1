@@ -14,7 +14,6 @@ func GetAvgHE(gameTable string, limit int) (float64, bool) {
 		limit,
 	)
 	res, err := grpcclient.SendQuery(query)
-	log.Println(res)
 
 	if err != nil || res == nil || res.Status != "ok" {
 		return 0, false
@@ -24,7 +23,7 @@ func GetAvgHE(gameTable string, limit int) (float64, bool) {
 	if exist == 0 {
 		return 0, false
 	}
-	DbCaseItems := dataDB["rows"].GetListValue()
+	DbCaseItems := dataDB["rows"].GetListValue().GetValues()
 	log.Println(DbCaseItems)
 	return 0, true
 }
