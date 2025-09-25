@@ -6,7 +6,6 @@ import (
 	"encoding/binary"
 	"encoding/hex"
 	"fmt"
-	"github.com/Milad-Abooali/4in-cs2skin-g1/src/internal/he"
 	"log"
 	"strconv"
 )
@@ -20,7 +19,7 @@ func FairRand(serverSeed, clientSeed string, nonce, max int) int {
 	return int(num) % max
 }
 
-func PickItem(caseData map[string]interface{}, serverSeed, clientSeed string, nonce int) map[string]interface{} {
+func PickItem(HE float64, caseData map[string]interface{}, serverSeed, clientSeed string, nonce int) map[string]interface{} {
 
 	selectedItem := selectItem(caseData, serverSeed, clientSeed, nonce)
 	priceStr, _ := selectedItem["price"].(string)
@@ -28,10 +27,6 @@ func PickItem(caseData map[string]interface{}, serverSeed, clientSeed string, no
 
 	casePricestr, _ := caseData["price"].(string)
 	casePrice, _ := strconv.ParseFloat(casePricestr, 64)
-
-	HE, _ := he.GetAvgHE("g1_games", 30)
-
-	log.Printf("HE: %f", HE)
 
 	if HE > 8 || HE == 0 {
 		return selectedItem

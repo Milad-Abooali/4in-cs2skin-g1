@@ -28,6 +28,7 @@ import (
 var (
 	BattleIndex   = make(map[int64]*models.Battle)
 	battleIndexMu sync.RWMutex
+	HE            float64
 )
 
 // NewBattle - Handler
@@ -1308,6 +1309,9 @@ func Roll(battleID int64, roundKey int) {
 
 	// Normalize Teams
 	if roundKey == 0 {
+		HE, _ = he.GetAvgHE("g1_games", 30)
+		log.Printf("HE: %f", HE)
+
 		time.Sleep(250 * time.Millisecond)
 		NormalizeTeams(battle)
 	}
@@ -1409,6 +1413,7 @@ func Roll(battleID int64, roundKey int) {
 
 			nonce += 97
 			item := provablyfair.PickItem(
+				HE,
 				caseData,
 				battle.PFair["serverSeed"].(string),
 				clientSeed,
@@ -1424,6 +1429,7 @@ func Roll(battleID int64, roundKey int) {
 				for {
 					nonce += 7
 					item = provablyfair.PickItem(
+						HE,
 						caseData,
 						battle.PFair["serverSeed"].(string),
 						clientSeed,
@@ -1451,6 +1457,7 @@ func Roll(battleID int64, roundKey int) {
 				for item["price"] == strconv.FormatFloat(lastPrize, 'f', -1, 64) {
 					nonce += 97
 					item = provablyfair.PickItem(
+						HE,
 						caseData,
 						battle.PFair["serverSeed"].(string),
 						clientSeed,
@@ -1466,6 +1473,7 @@ func Roll(battleID int64, roundKey int) {
 						for {
 							nonce += 7
 							item = provablyfair.PickItem(
+								HE,
 								caseData,
 								battle.PFair["serverSeed"].(string),
 								clientSeed,
