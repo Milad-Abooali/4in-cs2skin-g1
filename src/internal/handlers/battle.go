@@ -1419,7 +1419,7 @@ func Roll(battleID int64, roundKey int) {
 			}
 
 			if item == nil {
-				log.Printf("No item picked for slot: %s On Case: %s", slot, caseData["id"].(string))
+				log.Println("No item picked On Case:", caseData)
 				continue
 			}
 
@@ -1448,7 +1448,7 @@ func Roll(battleID int64, roundKey int) {
 					}
 
 					if item == nil {
-						log.Printf("No item picked for slot: %s On Case: %s", slot, caseData["id"].(string))
+						log.Println("No item picked On Case:", caseData)
 						continue
 					}
 
