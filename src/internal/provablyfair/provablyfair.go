@@ -37,27 +37,13 @@ func PickItem(caseData map[string]interface{}, serverSeed, clientSeed string, no
 		return selectedItem
 	}
 
-	if HE > 5 && HE < 8 {
+	if HE < 8 {
 		if price > casePrice {
 			for {
 				selectedItem = selectItem(caseData, serverSeed, clientSeed, nonce)
 				priceStr, _ = selectedItem["price"].(string)
 				price, _ = strconv.ParseFloat(priceStr, 64)
 				if price <= casePrice {
-					break
-				}
-				nonce++
-			}
-		}
-	}
-
-	if HE < 5 {
-		if price*1.5 > casePrice {
-			for {
-				selectedItem = selectItem(caseData, serverSeed, clientSeed, nonce)
-				priceStr, _ = selectedItem["price"].(string)
-				price, _ = strconv.ParseFloat(priceStr, 64)
-				if price*1.5 <= casePrice {
 					break
 				}
 				nonce++
