@@ -32,7 +32,7 @@ func PickItem(caseData map[string]interface{}, serverSeed, clientSeed string, no
 	HE, _ := he.GetAvgHE("g1_game", 30)
 	log.Printf("HE: %f", HE)
 
-	if HE > 8 {
+	if HE > 8 || HE == 0 {
 		return selectedItem
 	}
 
