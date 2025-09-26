@@ -201,6 +201,26 @@ func NewBattle(data map[string]interface{}) (models.HandlerOK, models.HandlerErr
 		return resR, errR
 	}
 
+	// Add XP
+	AddXp, err := utils.AddXp(
+		userID,
+		int(1.54*newBattle.Cost),
+		"Create Battle",
+		"G1",
+	)
+	if err != nil {
+		return resR, models.HandlerError{}
+	}
+	errCode, status, errType = utils.SafeExtractErrorStatus(AddXp)
+	if status != 1 {
+		errR.Type = errType
+		errR.Code = errCode
+		if resp["data"] != nil {
+			errR.Data = resp["data"]
+		}
+		return resR, errR
+	}
+
 	// HE Tracks
 	newBattle.Tracker.AddIncome(newBattle.Cost)
 
