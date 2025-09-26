@@ -404,6 +404,26 @@ func CancelBattle(data map[string]interface{}) (models.HandlerOK, models.Handler
 		return resR, errR
 	}
 
+	// Add XP
+	AddXp, err := utils.AddXp(
+		userID,
+		int(1.54*battle.Cost)*-1,
+		"Cancel Battle",
+		"G1",
+	)
+	if err != nil {
+		return resR, models.HandlerError{}
+	}
+	errCode, status, errType = utils.SafeExtractErrorStatus(AddXp)
+	if status != 1 {
+		errR.Type = errType
+		errR.Code = errCode
+		if resp["data"] != nil {
+			errR.Data = resp["data"]
+		}
+		return resR, errR
+	}
+
 	battle.Status = fmt.Sprintf(`Canceled by user`)
 	battle.StatusCode = -2
 	var update, errV = UpdateBattle(battle)
@@ -522,6 +542,7 @@ func Join(data map[string]interface{}) (models.HandlerOK, models.HandlerError) {
 		}
 		return resR, errR
 	}
+
 	// Add Transaction
 	Transaction, err := utils.AddTransaction(
 		userID,
@@ -544,11 +565,11 @@ func Join(data map[string]interface{}) (models.HandlerOK, models.HandlerError) {
 		return resR, errR
 	}
 
-	// Add Transaction
+	// Add XP
 	AddXp, err := utils.AddXp(
 		userID,
-		int(154*battle.Cost),
-		"G1 create Battle",
+		int(1.54*battle.Cost),
+		"Join Battle",
 		"G1",
 	)
 	if err != nil {
