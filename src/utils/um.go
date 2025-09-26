@@ -143,6 +143,8 @@ func GetUser(userID int) (map[string]interface{}, error) {
 	return result, nil
 }
 
+/* Transaction */
+
 // UMTransactionData defines the structure of transaction data.
 type UMTransactionData struct {
 	XKey        string  `json:"X_KEY"`
@@ -211,6 +213,82 @@ func AddTransaction(userID int, txType, referenceID string, amount float64, txRe
 			log.Println(err.Error())
 		}
 	}(resp.Body)
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read response: %w", err)
+	}
+
+	var result map[string]interface{}
+	if err := json.Unmarshal(body, &result); err != nil {
+		return nil, fmt.Errorf("invalid JSON response: %w", err)
+	}
+
+	return result, nil
+}
+
+/* XP */
+
+// UMXpData defines the structure of XP data.
+type UMXpData struct {
+	XKey      string `json:"x_key"`
+	UserID    int    `json:"userID"`
+	Amount    int    `json:"amount"`
+	Reason    string `json:"reason"`
+	CreatedBy string `json:"createdBy"`
+}
+
+// UMXpRequest wraps the request type and data for XP.
+type UMXpRequest struct {
+	Type string   `json:"type"` // "xAddXp"
+	Data UMXpData `json:"data"`
+}
+
+// AddXp sends an XP request to the UM API.
+func AddXp(userID, amount int, reason, createdBy string) (map[string]interface{}, error) {
+	env := os.Getenv("API_UM")
+	parts := make([]string, 3)
+	for i, p := range bytes.Split([]byte(env), []byte(",")) {
+		if i < 3 {
+			parts[i] = string(bytes.TrimSpace(p))
+		}
+	}
+	if len(parts) < 3 {
+		return nil, fmt.Errorf("invalid API_UM env format")
+	}
+	baseURL := parts[0]
+	appToken := parts[1]
+	xKey := parts[2]
+
+	reqBody := UMXpRequest{
+		Type: "xAddXp",
+		Data: UMXpData{
+			XKey:      xKey,
+			UserID:    userID,
+			Amount:    amount,
+			Reason:    reason,
+			CreatedBy: createdBy,
+		},
+	}
+
+	jsonBody, err := json.Marshal(reqBody)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal request: %w", err)
+	}
+
+	req, err := http.NewRequest("POST", baseURL, bytes.NewBuffer(jsonBody))
+	if err != nil {
+		return nil, fmt.Errorf("failed to create request: %w", err)
+	}
+	req.Header.Set("Authorization", "Bearer "+appToken)
+	req.Header.Set("Content-Type", "application/json")
+
+	client := &http.Client{}
+	resp, err := client.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("request failed: %w", err)
+	}
+	defer resp.Body.Close()
 
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {

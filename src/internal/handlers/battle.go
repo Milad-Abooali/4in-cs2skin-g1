@@ -544,6 +544,26 @@ func Join(data map[string]interface{}) (models.HandlerOK, models.HandlerError) {
 		return resR, errR
 	}
 
+	// Add Transaction
+	AddXp, err := utils.AddXp(
+		userID,
+		int(154*battle.Cost),
+		"G1 create Battle",
+		"G1",
+	)
+	if err != nil {
+		return resR, models.HandlerError{}
+	}
+	errCode, status, errType = utils.SafeExtractErrorStatus(AddXp)
+	if status != 1 {
+		errR.Type = errType
+		errR.Code = errCode
+		if resp["data"] != nil {
+			errR.Data = resp["data"]
+		}
+		return resR, errR
+	}
+
 	// HE Tracks
 	if battle.Tracker == nil {
 		battle.Tracker = he.NewTracker()
@@ -1450,47 +1470,56 @@ func Roll(battleID int64, roundKey int) {
 				Price:  utils.RoundToTwoDigits(price),
 			}
 
-			// reRun
+			// Rerun O	on Equality
 			if roundKey == len(battle.Cases)-1 {
 
-				for item["price"] == strconv.FormatFloat(lastPrize, 'f', -1, 64) {
-					nonce += 97
-					item = provablyfair.PickItem(
-						HE,
-						caseData,
-						battle.PFair["serverSeed"].(string),
-						clientSeed,
-						nonce,
-					)
-					if configs.Debug {
-						log.Println("Roll "+strconv.Itoa(roundKey), slot, caseID, nonce, item["price"])
-					}
+				reRoll := false
+				if utils.InArray(battle.Options, "madness") {
+					reRoll = isMinValue(battle.Summery.Prizes, battle.Summery.Prizes[slot])
+				} else {
+					reRoll = isMaxValue(battle.Summery.Prizes, battle.Summery.Prizes[slot])
+				}
 
-					if item == nil {
-
-						for {
-							nonce += 7
-							item = provablyfair.PickItem(
-								HE,
-								caseData,
-								battle.PFair["serverSeed"].(string),
-								clientSeed,
-								nonce,
-							)
-							if item != nil {
-								break
-							}
+				if reRoll {
+					for !isUniqueValue(battle.Summery.Prizes, battle.Summery.Prizes[slot]) {
+						nonce += 297
+						item = provablyfair.PickItem(
+							HE,
+							caseData,
+							battle.PFair["serverSeed"].(string),
+							clientSeed,
+							nonce,
+						)
+						if configs.Debug {
+							log.Println("Roll "+strconv.Itoa(roundKey), slot, caseID, nonce, item["price"])
 						}
 
-					}
+						if item == nil {
 
-					priceStr, _ = item["price"].(string)
-					price, _ = strconv.ParseFloat(priceStr, 64)
+							for {
+								nonce += 7
+								item = provablyfair.PickItem(
+									HE,
+									caseData,
+									battle.PFair["serverSeed"].(string),
+									clientSeed,
+									nonce,
+								)
+								if item != nil {
+									break
+								}
+							}
 
-					step = models.StepResult{
-						Slot:   slot,
-						ItemID: int(item["id"].(float64)),
-						Price:  utils.RoundToTwoDigits(price),
+						}
+
+						priceStr, _ = item["price"].(string)
+						price, _ = strconv.ParseFloat(priceStr, 64)
+
+						step = models.StepResult{
+							Slot:   slot,
+							ItemID: int(item["id"].(float64)),
+							Price:  utils.RoundToTwoDigits(price),
+						}
 					}
 				}
 
@@ -1509,6 +1538,44 @@ func Roll(battleID int64, roundKey int) {
 		AddLog(battle, fmt.Sprintf("Roll %d", roundKey+1), 0)
 	}
 	Roll(battleID, roundKey+1)
+}
+
+// check
+func isUniqueValue(m map[string]float64, target float64) bool {
+	count := 0
+	for _, v := range m {
+		if v == target {
+			count++
+			if count > 1 {
+				return false
+			}
+		}
+	}
+	return count == 1
+}
+func isMinValue(m map[string]float64, target float64) bool {
+	if len(m) == 0 {
+		return false
+	}
+	min := target
+	for _, v := range m {
+		if v < min {
+			return false
+		}
+	}
+	return true
+}
+func isMaxValue(m map[string]float64, target float64) bool {
+	if len(m) == 0 {
+		return false
+	}
+	max := target
+	for _, v := range m {
+		if v > max {
+			return false
+		}
+	}
+	return true
 }
 
 // optionActions - Battle Helper
