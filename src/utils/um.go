@@ -231,7 +231,7 @@ func AddTransaction(userID int, txType, referenceID string, amount float64, txRe
 
 // UMXpData defines the structure of XP data.
 type UMXpData struct {
-	XKey      string `json:"x_key"`
+	XKey      string `json:"X_KEY"`
 	UserID    int    `json:"userID"`
 	Amount    int    `json:"amount"`
 	Reason    string `json:"reason"`
