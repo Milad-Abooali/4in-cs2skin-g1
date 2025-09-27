@@ -42,9 +42,6 @@ func NewBattle(data map[string]interface{}) (models.HandlerOK, models.HandlerErr
 		FillCaseImpact()
 	}
 
-	// Test
-	he.GetAvgHE("g1_games", 10)
-
 	// Check Token
 	userJWT, vErr, ok := validate.RequireString(data, "token", false)
 	if !ok {
