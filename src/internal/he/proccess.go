@@ -38,7 +38,7 @@ func (t *Tracker) calRatio() {
 			t.ROI = 100 // Neutral: no income, no expense
 			return
 		}
-		t.ROI = 999999 // Special case: division by zero
+		t.ROI = 0 // Special case: division by zero
 		return
 	}
 	t.ROI = (t.Income / t.Expense) * 100
